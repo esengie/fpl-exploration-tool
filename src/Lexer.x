@@ -1,0 +1,151 @@
+{
+module Lexer
+  ( Token(..)
+  , AlexPosn(..)
+  , TokenClass(..)
+  , unLex
+  , Alex(..)
+  , runAlex'
+  , alexMonadScan'
+  , alexError'
+  ) where
+import Prelude hiding (lex)
+import Control.Monad ( liftM, forever )
+}
+
+%wrapper "monadUserState"
+
+$digit = 0-9
+$alpha = [A-Za-z]
+@indent = "  " | \t
+
+tokens :-
+  \n(@indent)*                            { lex' TokenIndent       }
+  $white+                               ;
+  "--".*                                ; -- kill comments
+  let                                   { lex' TokenLet         }
+  in                                    { lex' TokenIn          }
+  $digit+                               { lex (TokenInt . read) }
+  $alpha [$alpha $digit \_ \']*         { lex  TokenVar         }
+  "="                                    { lex' TokenEq          }
+  "+"                                    { lex' TokenPlus        }
+  "-"                                    { lex' TokenMinus       }
+  "*"                                    { lex' TokenTimes       }
+  "/"                                    { lex' TokenDiv         }
+  "("                                    { lex' TokenLParen      }
+  ")"                                    { lex' TokenRParen      }
+
+{
+
+data AlexUserState = AlexUserState { filePath :: FilePath,
+                      indents  :: Int }
+
+alexInitUserState :: AlexUserState
+alexInitUserState = AlexUserState "<unknown>" 0
+
+getFilePath :: Alex FilePath
+getFilePath = liftM filePath alexGetUserState
+
+getIndents :: Alex Int
+getIndents = liftM indents alexGetUserState
+
+setFilePath :: FilePath -> Alex ()
+setFilePath f = do
+  u <- alexGetUserState
+  alexSetUserState $ AlexUserState f (indents u)
+
+setIndents :: Int -> Alex ()
+setIndents i = do
+  u <- alexGetUserState
+  alexSetUserState $ AlexUserState (filePath u) i
+
+
+-- The token type, consisting of the source code position and a token class.
+data Token = Token AlexPosn TokenClass
+  deriving ( Show )
+
+data TokenClass
+  = TokenLet
+  | TokenIn
+  | TokenInt Int
+  | TokenVar String
+  | TokenEq
+  | TokenPlus
+  | TokenMinus
+  | TokenTimes
+  | TokenDiv
+  | TokenLParen
+  | TokenRParen
+  | TokenEOF
+  | TokenIndent
+  | TokenUnindent
+  deriving ( Show )
+
+-- For nice parser error messages.
+unLex :: TokenClass -> String
+unLex TokenLet = "let"
+unLex TokenIn = "in"
+unLex (TokenInt i) = show i
+unLex (TokenVar s) = show s
+unLex TokenEq = "="
+unLex TokenPlus = "+"
+unLex TokenMinus = "-"
+unLex TokenTimes = "*"
+unLex TokenDiv = "/"
+unLex TokenLParen = "("
+unLex TokenRParen = ")"
+unLex TokenEOF = "<EOF>"
+unLex TokenIndent = "<TAB>"
+unLex TokenUnindent = "<UNTAB>"
+
+alexEOF :: Alex Token
+alexEOF = do
+  (p,_,_,_) <- alexGetInput
+  return $ Token p TokenEOF
+
+-- Unfortunately, we have to extract the matching bit of string
+-- ourselves...
+lex :: (String -> TokenClass) -> AlexAction Token
+lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
+
+-- For constructing tokens that do not depend on
+-- the input
+lex' :: TokenClass -> AlexAction Token
+lex' = lex . const
+
+-- We rewrite alexMonadScan' to delegate to alexError' when lexing fails
+-- (the default implementation just returns an error message).
+alexMonadScan' :: Alex Token
+alexMonadScan' = do
+  inp <- alexGetInput
+  sc <- alexGetStartCode
+  case alexScan inp sc of
+    AlexEOF -> alexEOF
+    AlexError (p, _, _, s) ->
+        alexError' p ("lexical error at character '" ++ take 1 s ++ "'")
+    AlexSkip  inp' len -> do
+        alexSetInput inp'
+        alexMonadScan'
+    AlexToken inp' len action -> do
+        alexSetInput inp'
+        action (ignorePendingBytes inp) len
+
+-- Signal an error, including a commonly accepted source code position.
+alexError' :: AlexPosn -> String -> Alex a
+alexError' (AlexPn _ l c) msg = do
+  fp <- getFilePath
+  alexError (fp ++ ":" ++ show l ++ ":" ++ show c ++ ": " ++ msg)
+
+-- A variant of runAlex, keeping track of the path of the file we are lexing.
+runAlex' :: Alex a -> FilePath -> String -> Either String a
+runAlex' a fp input = runAlex input (setFilePath fp >> a)
+
+putss (Left s) = putStrLn s
+putss (Right r) = print r
+
+main :: IO()
+main = forever $ do
+     input <- getContents
+     let k = (runAlex' alexMonadScan "allo" input)
+     putss k
+}
