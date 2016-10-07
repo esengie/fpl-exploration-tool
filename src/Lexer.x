@@ -8,6 +8,7 @@ module Lexer
   , runAlex'
   , alexMonadScan'
   , alexError'
+  , maien
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever )
@@ -21,11 +22,10 @@ $alpha = [A-Za-z]
 
 tokens :-
   \n(@indent)*                            { lex' TokenIndent       }
-  $white+                               ;
   "--".*                                ; -- kill comments
   let                                   { lex' TokenLet         }
   in                                    { lex' TokenIn          }
-  $digit+                               { lex (TokenInt . read) }
+  $digit+ [~$alpha]                     { lex (TokenInt . read) }
   $alpha [$alpha $digit \_ \']*         { lex  TokenVar         }
   "="                                    { lex' TokenEq          }
   "+"                                    { lex' TokenPlus        }
@@ -34,6 +34,7 @@ tokens :-
   "/"                                    { lex' TokenDiv         }
   "("                                    { lex' TokenLParen      }
   ")"                                    { lex' TokenRParen      }
+  $white+                               ;
 
 {
 
@@ -98,6 +99,22 @@ unLex TokenEOF = "<EOF>"
 unLex TokenIndent = "<TAB>"
 unLex TokenUnindent = "<UNTAB>"
 
+
+startWhite:: AlexAction Token
+startWhite = \(p,_,_,s) i -> do
+	   s<-get
+           let is@(cur:_) = indent_stack s
+           when (n>cur) $ do
+              put s{indent_stack = n:is,pending_tokens = [TIndent]}
+           when (n<cur)  $ do
+              let (pre,post@(top:_)) = span (> n) is
+              if top == n then
+                 put s{indent_stack = post,
+                                    pending_tokens = map (const TDedent) pre}
+              else
+                 error "Indents don't match"
+           return TNewline
+
 alexEOF :: Alex Token
 alexEOF = do
   (p,_,_,_) <- alexGetInput
@@ -125,10 +142,10 @@ alexMonadScan' = do
         alexError' p ("lexical error at character '" ++ take 1 s ++ "'")
     AlexSkip  inp' len -> do
         alexSetInput inp'
-        alexMonadScan'
+        alexMonadScan'alloallo
     AlexToken inp' len action -> do
         alexSetInput inp'
-        action (ignorePendingBytes inp) len
+        action (ignorePendingBytes inp) len -- wtf is action?
 
 -- Signal an error, including a commonly accepted source code position.
 alexError' :: AlexPosn -> String -> Alex a
@@ -141,11 +158,11 @@ runAlex' :: Alex a -> FilePath -> String -> Either String a
 runAlex' a fp input = runAlex input (setFilePath fp >> a)
 
 putss (Left s) = putStrLn s
-putss (Right r) = print r
+putss (Right r) = putStrLn (show r)
 
-main :: IO()
-main = forever $ do
+maien :: IO()
+maien = do
      input <- getContents
-     let k = (runAlex' alexMonadScan "allo" input)
+     let k = (runAlex' alexMonadScan' "userIn" input)
      putss k
 }
