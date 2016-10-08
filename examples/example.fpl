@@ -13,12 +13,16 @@ FunSyms :
   -- контекст в синтаксисе
 
 Axioms :
-  -- ну и тут наверное названия нужны аксиом
-  forall A : ty , B : ty , x.b : tm  -- синтаксис с точкой означает что b : (tm , 1) - b в контексте длины 1?
+  AxiomOne =
+    forall A : ty , B : ty , x.b : tm  -- синтаксис с точкой означает что b : (tm , 1) - b в контексте длины 1?
                                       -- и (x y).b : (tm , 2)?
-    x : A |- b : B |--- |- lam(A , x.b) : arr(A , B)
+      x : A |- b : B |--- |- lam(A , x.b) : arr(A , B)
 
-  forall (x y).b : tm , B : ty , A : ty  -- ругаться если больше параметров чем использованных?
-    x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] -- имеем subst по дефолту
+  AxiomTwo =
+    forall (x y).b : tm , B : ty , A : ty  -- не ругаться если больше параметров чем использованных
+      x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] -- имеем subst по дефолту
                                                         -- что-то ещё есть по дефолту? (тк вроде было)
-                                                        
+
+-- can context become larger? (yes), and context of the variable?
+-- equality, subst and isTypeOf (lam(A , x.b) : arr(A , B))
+-- right of forall can it have terms or not? (x.b : arr(A , B))
