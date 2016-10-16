@@ -22,7 +22,7 @@ $alpha = [A-Za-z]
 
 tokens :-
   "--".*                                ; -- kill comments
-  \n(@indent)*                          { startWhite }
+  \n(@indent)*                          { startWhite        }
   $digit+                               { lex (TInt . read) }
   $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
   "="                                   { lex' TEq          }
@@ -39,8 +39,11 @@ tokens :-
   "]"                                   { lex' TRSubst      }
   ":="                                  { lex' TSubst       }
   $white+                               ;
+  \n(@indent)* "--".*                   ; -- kill comments some more
 
 {
+startWhite' _ _ = error "whaaaat?"
+
 
 data AlexUserState = AlexUserState {
     filePath :: FilePath,
