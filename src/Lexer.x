@@ -1,3 +1,5 @@
+-- No need to fix positions cause we don't care anyway
+--
 {
 module Lexer
   ( Token(..)
@@ -12,6 +14,7 @@ module Lexer
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever, when )
+import Debug.Trace
 }
 
 %wrapper "monadUserState"
@@ -22,7 +25,7 @@ $alpha = [A-Za-z]
 
 tokens :-
   "--".*                                ; -- kill comments
-  \n(@indent)*                          { startWhite        }
+  \n (@indent)*                         { startWhite        }
   $digit+                               { lex (TInt . read) }
   $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
   "="                                   { lex' TEq          }
@@ -38,12 +41,10 @@ tokens :-
   "["                                   { lex' TLSubst      }
   "]"                                   { lex' TRSubst      }
   ":="                                  { lex' TSubst       }
-  $white+                               ;
-  \n(@indent)* "--".*                   ; -- kill comments some more
+  [\ \t\f\v]+                           ;
+  \n (@indent)* "--".*                  ; -- kill comments some more
 
 {
-startWhite' _ _ = error "whaaaat?"
-
 
 data AlexUserState = AlexUserState {
     filePath :: FilePath,
@@ -81,12 +82,12 @@ data TokenClass
 
 startWhite :: AlexInput -> Int -> Alex Token
 startWhite (p,_, _, _) n = do
-     is@(cur:_) <- getIndentStack
+     indentSt@(cur:_) <- getIndentStack
      when (n>cur) $ do
-        setIndentStack (n : is)
+        setIndentStack (n : indentSt)
         setPendingTokens [Token p TIndent]
      when (n<cur) $ do
-        let (pre,post@(top:_)) = span (> n) is
+        let (pre,post@(top:_)) = span (> n) indentSt
         if top == n then do
            setIndentStack post
            setPendingTokens (map (const (Token p TDedent)) pre)
@@ -94,7 +95,7 @@ startWhite (p,_, _, _) n = do
            alexError' p "Indents don't match"
      return (Token p TNewLine)
 
-
+-- Need this apparently
 alexEOF :: Alex Token
 alexEOF = do
   (p,_,_,_) <- alexGetInput
@@ -105,6 +106,9 @@ alexEOF = do
 lex :: (String -> TokenClass) -> AlexAction Token
 lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
 
+skip' :: AlexAction Token
+skip' = \(p,_,_,s) i -> skip s (i-1)
+
 -- For constructing tokens that do not depend on
 -- the input
 lex' :: TokenClass -> AlexAction Token
@@ -114,18 +118,28 @@ lex' = lex . const
 -- (the default implementation just returns an error message).
 alexMonadScan' :: Alex Token
 alexMonadScan' = do
-  inp <- alexGetInput
-  sc <- alexGetStartCode
-  case alexScan inp sc of
-    AlexEOF -> alexEOF
-    AlexError (p, _, _, s) ->
-        alexError' p ("lexical error at character '" ++ take 1 s ++ "'")
-    AlexSkip  inp' len -> do
-        alexSetInput inp'
-        alexMonadScan'
-    AlexToken inp' len action -> do
-        alexSetInput inp'
-        action (ignorePendingBytes inp) len -- wtf is action?
+    inp <- alexGetInput
+    sc <- alexGetStartCode
+    pendTok <- getPendingTokens
+    case pendTok of
+      t:ts -> do
+        setPendingTokens ts
+        return t
+      [] -> case alexScan inp sc of
+        AlexEOF -> do
+          a@(p,_,_,_) <- alexGetInput
+          rval <- startWhite a 1
+          pt <- getPendingTokens
+          setPendingTokens (pt ++ [Token p TEOF])
+          return rval
+        AlexError (p, _, _, s) ->
+          alexError' p ("lexical error at character '" ++ take 1 s ++ "'")
+        AlexSkip inp' _ -> do
+          alexSetInput inp'
+          alexMonadScan'
+        AlexToken inp' n act -> do
+          alexSetInput inp'
+          act (ignorePendingBytes inp) n
 
 -- Signal an error, including a commonly accepted source code position.
 alexError' :: AlexPosn -> String -> Alex a
@@ -148,15 +162,15 @@ readtoks = do
 
 detok (Token _ d) = d
 
-putss (Left s) = [s]
-putss (Right r) = map (unLex . detok) r
+printHelper (Left s) = [s]
+printHelper (Right r) = map (unLex . detok) r
 
 tokenize::String-> Either String [Token]
 tokenize s =
          (runAlex' "sad" s readtoks)
 
 maien :: String -> [String]
-maien input = putss (tokenize input)
+maien input = printHelper (tokenize input)
 
 -- For nice parser error messages.
 unLex :: TokenClass -> String

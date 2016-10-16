@@ -22,6 +22,7 @@ Axioms :
     forall (x y).b : tm , B : ty , A : ty  -- не ругаться если больше параметров чем использованных
       x : A |- b : B , |- a : A |---- |- app( lam(A , x.b) , a) = b[ x := a ] : B -- имеем subst по дефолту
                                                         -- что-то ещё есть по дефолту? (:, =, subst)
+
   AxiomThree =
     forall (x y).b : tm , z.B : tn , A : ty , a : tm -- meta : (for sorts)
       x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] : B [ z := a ] -- следить за свободными
