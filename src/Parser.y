@@ -1,38 +1,57 @@
 {
 module Parser(parse) where
+
 import AST
-import qualified Lexer as L
-import Control.Monad.Error
+import Lexer
+
 }
 
-%monad{L.P}
-%lexer{L.lexer}{L.TEOF}
 %name parse
-%tokentype{L.Token}
-%error {parseError}
+%tokentype { Token }
+%monad { Alex }
+%lexer { lexwrap } { Token _ TEOF }
+-- Without this we get a type error
+%error { happyError }
 
 %token
-  true  	{L.TTrue}
-  false 	{L.TFalse}
-  zero   	{L.TZero}
-  iszero        {L.TIsZero}
-  succ		{L.TSucc}
-  pred		{L.TPred}
-  if		{L.TIf}
-  then		{L.TThen}
-  else		{L.TElse}
+      let             { Token _ TokenLet }
+      in              { Token _ TokenIn }
+      int             { Token _ (TokenInt $$) }
+      var             { Token _ (TokenVar $$) }
+      '='             { Token _ TokenEq }
+      '+'             { Token _ TokenPlus }
+      '-'             { Token _ TokenMinus }
+      '*'             { Token _ TokenTimes }
+      '/'             { Token _ TokenDiv }
+      '('             { Token _ TokenLParen }
+      ')'             { Token _ TokenRParen }
 
 %%
 
-Term	:  true				{STrue}
-	|  false			{SFalse}
-	|  zero				{SZero}
-	|  iszero Term			{SIsZero $2}
-	|  succ Term			{SSucc $2}
-	|  pred Term			{SPred $2}
-	|  if Term then Term else Term	{SIfThen $2 $4 $6}
+Exp   : let var '=' Exp in Exp  { Let $2 $4 $6 }
+      | Exp1                    { Exp1 $1 }
+
+Exp1  : Exp1 '+' Term           { Plus $1 $3 }
+      | Exp1 '-' Term           { Minus $1 $3 }
+      | Term                    { Term $1 }
+
+Term  : Term '*' Factor         { Times $1 $3 }
+      | Term '/' Factor         { Div $1 $3 }
+      | Factor                  { Factor $1 }
+
+Factor
+      : int                     { Int $1 }
+      | var                     { Var $1 }
+      | '(' Exp ')'             { Brack $2 }
 
 {
-parseError _ = throwError "!Parse Error"
+lexwrap :: (Token -> Alex a) -> Alex a
+lexwrap = (alexMonadScan' >>=)
 
+happyError :: Token -> Alex a
+happyError (Token p t) =
+  alexError' p ("parse error at token '" ++ unLex t ++ "'")
+
+parseExp :: FilePath -> String -> Either String Exp
+parseExp = runAlex' parse
 }

@@ -1,5 +1,3 @@
--- No need to fix positions cause we don't care anyway
---
 {
 module Lexer
   ( Token(..)
@@ -14,7 +12,6 @@ module Lexer
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever, when )
-import Debug.Trace
 }
 
 %wrapper "monadUserState"
@@ -105,9 +102,6 @@ alexEOF = do
 -- ourselves...
 lex :: (String -> TokenClass) -> AlexAction Token
 lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
-
-skip' :: AlexAction Token
-skip' = \(p,_,_,s) i -> skip s (i-1)
 
 -- For constructing tokens that do not depend on
 -- the input
