@@ -2,26 +2,18 @@ module AST -- (AST(..)
   -- )
   where
 
-data AST
-  = DependentSorts [DependentSort]
-  | NotDependentSorts [NotDependentSort]
-  | FunctionalSymbol [FunctionalSymbol]
-  | Axioms [Axiom]
+data Spec = Spec {
+   depSorts :: [Sort]
+   , notDepSorts :: [Sort]
+   , funSyms :: [FunctionalSymbol]
+   , axioms :: [Axiom]
+ }
   deriving (Eq, Show)
 
 type Name = String
 type ContextDepth = Int
 
-data DependentSort = DependentSort {
-    nameDep :: Name,
-    depth :: !ContextDepth
-  } deriving (Eq, Show)
-
-data NotDependentSort = NotDependentSort {
-    nameNotDep :: Name
-  } deriving (Eq, Show)
-
-data Sort = DepSort DependentSort | NDepSort NotDependentSort
+data Sort = DepSort Name !ContextDepth | NDepSort Name
   deriving (Eq, Show)
 
 data FunctionalSymbol = FunSym {
@@ -36,13 +28,16 @@ data Variable = DepVar [Name] Name | NDepVar Name
 data Axiom = Axiom {
   name :: Name,
   vars :: [(Variable, Sort)],
-  premise :: [Sequent],
-  conclusion :: Sequent
+  premise :: [Judgement],
+  conclusion :: Judgement
 } deriving (Eq, Show)
 
-data Sequent = Seq {
-  leftS :: [Term],
-  rightS :: Term    -- only one?
+data Judgement = RVar {  -- rename Judgement
+  leftJ :: [(Variable, Term)], -- pairs (Var , Term)
+  rightTy :: (Variable, Term)    -- (Var, Term) or (Term, Term, Type)
+}              | REqual {
+  leftJ :: [(Variable, Term)],
+  rightEq :: (Term, Term, Term) -- equality
 }
   deriving (Eq, Show)
 

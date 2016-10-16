@@ -1,7 +1,7 @@
 -- <- Коммент, + индентация имеет значение
 
 DepSorts :
-  tm, tn
+  tm, tn -- depends on tm
 
 InDepSorts :
   ty
@@ -15,14 +15,19 @@ FunSyms :
 Axioms :
   AxiomOne =
     forall A : ty , B : ty , x.b : tm  -- синтаксис с точкой означает что b : (tm , 1) - b в контексте длины 1?
-                                      -- и (x y).b : (tm , 2)?
-      x : A |- b : B |--- |- lam(A , x.b) : arr(A , B)
+                                       -- и (x y).b : (tm , 2)? (x free in b)
+      x : A |- b : B |--- x : A |- lam(A , y z . b) : arr(A , B)
 
   AxiomTwo =
     forall (x y).b : tm , B : ty , A : ty  -- не ругаться если больше параметров чем использованных
-      x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] -- имеем subst по дефолту
-                                                        -- что-то ещё есть по дефолту? (тк вроде было)
+      x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] : B -- имеем subst по дефолту
+                                                        -- что-то ещё есть по дефолту? (:, =, subst)
+  AxiomThree =
+    forall (x y).b : tm , z.B : tn , A : ty , a : tm -- meta : (for sorts)
+      x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] : B [ z := a ] -- следить за свободными
+
+
 
 -- can context become larger? (yes), and context of the variable?
 -- equality, subst and isTypeOf (lam(A , x.b) : arr(A , B))
--- right of forall can it have terms or not? (x.b : arr(A , B))
+-- right of forall can it have terms or not? (x.b : arr(A , B) -- no because ':' is meta op

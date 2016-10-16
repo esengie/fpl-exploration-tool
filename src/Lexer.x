@@ -11,7 +11,7 @@ module Lexer
   , maien
   ) where
 import Prelude hiding (lex)
-import Control.Monad ( liftM, forever )
+import Control.Monad ( liftM, forever, when )
 }
 
 %wrapper "monadUserState"
@@ -21,104 +21,81 @@ $alpha = [A-Za-z]
 @indent = "  " | \t
 
 tokens :-
-  \n(@indent)*                            { lex' TokenIndent       }
   "--".*                                ; -- kill comments
-  let                                   { lex' TokenLet         }
-  in                                    { lex' TokenIn          }
-  $digit+ [~$alpha]                     { lex (TokenInt . read) }
-  $alpha [$alpha $digit \_ \']*         { lex  TokenVar         }
-  "="                                    { lex' TokenEq          }
-  "+"                                    { lex' TokenPlus        }
-  "-"                                    { lex' TokenMinus       }
-  "*"                                    { lex' TokenTimes       }
-  "/"                                    { lex' TokenDiv         }
-  "("                                    { lex' TokenLParen      }
-  ")"                                    { lex' TokenRParen      }
+  \n(@indent)*                          { startWhite }
+  $digit+                               { lex (TInt . read) }
+  $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
+  "="                                   { lex' TEq          }
+  ":"                                   { lex' TColon       }
+  "|-"                                  { lex' TTurnstile   }
+  "|--" "-"*                            { lex' TJudgement   }
+  ","                                   { lex' TComma       }
+  "."                                   { lex' TDot         }
+  "->"                                  { lex' TArrow       }
+  "*"                                   { lex' TTimes       }
+  "("                                   { lex' TLParen      }
+  ")"                                   { lex' TRParen      }
+  "["                                   { lex' TLSubst      }
+  "]"                                   { lex' TRSubst      }
+  ":="                                  { lex' TSubst       }
   $white+                               ;
 
 {
 
-data AlexUserState = AlexUserState { filePath :: FilePath,
-                      indents  :: Int }
+data AlexUserState = AlexUserState {
+    filePath :: FilePath,
+    indentStack::[Int],
+    pendingTokens::[Token] }
 
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState "<unknown>" 0
-
-getFilePath :: Alex FilePath
-getFilePath = liftM filePath alexGetUserState
-
-getIndents :: Alex Int
-getIndents = liftM indents alexGetUserState
-
-setFilePath :: FilePath -> Alex ()
-setFilePath f = do
-  u <- alexGetUserState
-  alexSetUserState $ AlexUserState f (indents u)
-
-setIndents :: Int -> Alex ()
-setIndents i = do
-  u <- alexGetUserState
-  alexSetUserState $ AlexUserState (filePath u) i
-
+alexInitUserState = AlexUserState "<unknown>" [1] []
 
 -- The token type, consisting of the source code position and a token class.
 data Token = Token AlexPosn TokenClass
   deriving ( Show )
 
 data TokenClass
-  = TokenLet
-  | TokenIn
-  | TokenInt Int
-  | TokenVar String
-  | TokenEq
-  | TokenPlus
-  | TokenMinus
-  | TokenTimes
-  | TokenDiv
-  | TokenLParen
-  | TokenRParen
-  | TokenEOF
-  | TokenIndent
-  | TokenUnindent
+  = TInt Int
+  | TIdent String
+  | TEq
+  | TColon
+  | TTurnstile
+  | TJudgement
+  | TComma
+  | TDot
+  | TArrow
+  | TTimes
+  | TLParen
+  | TRParen
+  | TLSubst
+  | TRSubst
+  | TSubst
+  | TEOF
+  | TIndent
+  | TDedent
+  | TNewLine
   deriving ( Show )
 
--- For nice parser error messages.
-unLex :: TokenClass -> String
-unLex TokenLet = "let"
-unLex TokenIn = "in"
-unLex (TokenInt i) = show i
-unLex (TokenVar s) = show s
-unLex TokenEq = "="
-unLex TokenPlus = "+"
-unLex TokenMinus = "-"
-unLex TokenTimes = "*"
-unLex TokenDiv = "/"
-unLex TokenLParen = "("
-unLex TokenRParen = ")"
-unLex TokenEOF = "<EOF>"
-unLex TokenIndent = "<TAB>"
-unLex TokenUnindent = "<UNTAB>"
+startWhite :: AlexInput -> Int -> Alex Token
+startWhite (p,_, _, _) n = do
+     is@(cur:_) <- getIndentStack
+     when (n>cur) $ do
+        setIndentStack (n : is)
+        setPendingTokens [Token p TIndent]
+     when (n<cur) $ do
+        let (pre,post@(top:_)) = span (> n) is
+        if top == n then do
+           setIndentStack post
+           setPendingTokens (map (const (Token p TDedent)) pre)
+        else
+           alexError' p "Indents don't match"
+     return (Token p TNewLine)
 
-
-startWhite:: AlexAction Token
-startWhite = \(p,_,_,s) i -> do
-	   s<-get
-           let is@(cur:_) = indent_stack s
-           when (n>cur) $ do
-              put s{indent_stack = n:is,pending_tokens = [TIndent]}
-           when (n<cur)  $ do
-              let (pre,post@(top:_)) = span (> n) is
-              if top == n then
-                 put s{indent_stack = post,
-                                    pending_tokens = map (const TDedent) pre}
-              else
-                 error "Indents don't match"
-           return TNewline
 
 alexEOF :: Alex Token
 alexEOF = do
   (p,_,_,_) <- alexGetInput
-  return $ Token p TokenEOF
+  return $ Token p TEOF
 
 -- Unfortunately, we have to extract the matching bit of string
 -- ourselves...
@@ -142,7 +119,7 @@ alexMonadScan' = do
         alexError' p ("lexical error at character '" ++ take 1 s ++ "'")
     AlexSkip  inp' len -> do
         alexSetInput inp'
-        alexMonadScan'alloallo
+        alexMonadScan'
     AlexToken inp' len action -> do
         alexSetInput inp'
         action (ignorePendingBytes inp) len -- wtf is action?
@@ -154,15 +131,75 @@ alexError' (AlexPn _ l c) msg = do
   alexError (fp ++ ":" ++ show l ++ ":" ++ show c ++ ": " ++ msg)
 
 -- A variant of runAlex, keeping track of the path of the file we are lexing.
-runAlex' :: Alex a -> FilePath -> String -> Either String a
-runAlex' a fp input = runAlex input (setFilePath fp >> a)
+runAlex' :: FilePath -> String -> Alex a -> Either String a
+runAlex' fp input a = runAlex input (setFilePath fp >> a)
 
-putss (Left s) = putStrLn s
-putss (Right r) = putStrLn (show r)
+readtoks:: Alex [Token]
+readtoks = do
+            t<-alexMonadScan'
+            case t of
+              (Token _ TEOF) -> return [t]
+              _ -> do
+                rest<- readtoks
+                return (t:rest)
 
-maien :: IO()
-maien = do
-     input <- getContents
-     let k = (runAlex' alexMonadScan' "userIn" input)
-     putss k
+detok (Token _ d) = d
+
+putss (Left s) = [s]
+putss (Right r) = map (unLex . detok) r
+
+tokenize::String-> Either String [Token]
+tokenize s =
+         (runAlex' "sad" s readtoks)
+
+maien :: String -> [String]
+maien input = putss (tokenize input)
+
+-- For nice parser error messages.
+unLex :: TokenClass -> String
+unLex (TInt i) = show i
+unLex (TIdent s) = s
+unLex TEq = "="
+unLex TColon = ":"
+unLex TTurnstile = "|-"
+unLex TJudgement = "|---"
+unLex TComma = ","
+unLex TDot = "."
+unLex TArrow = "->"
+unLex TTimes = "*"
+unLex TLParen = "("
+unLex TRParen = ")"
+unLex TLSubst = "["
+unLex TRSubst = "]"
+unLex TSubst = ":="
+unLex TEOF = "<EOF>"
+unLex TIndent = "<TAB>"
+unLex TDedent = "<UNTAB>"
+unLex TNewLine = "<NEWLINE>"
+
+getFilePath :: Alex FilePath
+getFilePath = liftM filePath alexGetUserState
+
+getIndentStack :: Alex [Int]
+getIndentStack = liftM indentStack alexGetUserState
+
+getPendingTokens :: Alex [Token]
+getPendingTokens = liftM pendingTokens alexGetUserState
+
+setFilePath :: FilePath -> Alex ()
+setFilePath f = do
+  u <- alexGetUserState
+  alexSetUserState $ AlexUserState f (indentStack u) (pendingTokens u)
+
+setIndentStack :: [Int] -> Alex ()
+setIndentStack i = do
+  u <- alexGetUserState
+  alexSetUserState $ AlexUserState (filePath u) i (pendingTokens u)
+
+setPendingTokens :: [Token] -> Alex ()
+setPendingTokens i = do
+  u <- alexGetUserState
+  alexSetUserState $ AlexUserState (filePath u) (indentStack u) i
+
+
 }
