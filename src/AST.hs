@@ -1,5 +1,4 @@
-module AST -- (AST(..)
-  -- )
+module AST
   where
 
 data LangSpec = LangSpec {
@@ -28,7 +27,7 @@ data Variable = DepVar [Name] Name | SimpleVar Name
 
 data Axiom = Axiom {
   nameAx     :: Name,
-  vars       :: [(Variable, SortName)],
+  forallVars       :: [(Variable, SortName)],
   premise    :: [Judgement],
   conclusion :: Judgement
 } deriving (Eq, Show)

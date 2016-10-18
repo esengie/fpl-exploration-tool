@@ -70,7 +70,7 @@ ForallVars      :   ForallVar                                 { [$1] }
 ForallVar       :   VarName ':' ident                         { ($1 , $3) }
 VarName         :   ident                                     { SimpleVar $1 }
                 |   ident '.' ident                           { DepVar [$1] $3 }
-                |   '(' SpaceSepNames ')' '.' ident           {DepVar $2 $5 }
+                |   '(' SpaceSepNames ')' '.' ident           { DepVar $2 $5 }
 
 SpaceSepNames   :   ident                                     { [$1] }
                 |   ident SpaceSepNames                       { $1 : $2 }
