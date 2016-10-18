@@ -3,21 +3,23 @@ module AST -- (AST(..)
   where
 
 data LangSpec = LangSpec {
-  depSortNames    :: [Name]
-, simpleSortNames :: [Name]
-, funSyms     :: [FunctionalSymbol]
-, axioms      :: [Axiom]
+  depSortNames    :: [SortName]
+, simpleSortNames :: [SortName]
+, funSyms         :: [FunctionalSymbol]
+, axioms          :: [Axiom]
 } deriving (Eq, Show)
 
+type SortName = String
 type Name = String
 type ContextDepth = Int
 
-data Sort = DepSort Name !ContextDepth | SimpleSort Name
+data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq, Show)
 
 data FunctionalSymbol = FunSym {
-  arguments :: [Sort]
-, result    :: Name
+  nameFun   :: Name
+, arguments :: [Sort]
+, result    :: SortName
 } deriving (Eq, Show)
 
 
@@ -25,26 +27,27 @@ data Variable = DepVar [Name] Name | SimpleVar Name
   deriving (Eq, Show)
 
 data Axiom = Axiom {
-  name       :: Name,
-  vars       :: [(Variable, Sort)],
+  nameAx     :: Name,
+  vars       :: [(Variable, SortName)],
   premise    :: [Judgement],
-  conclusion :: [Judgement]
+  conclusion :: Judgement
 } deriving (Eq, Show)
 
 data Judgement =
   Statement {  -- rename Judgement
-  leftJ     :: [(Variable, Term)] -- pairs (Var , Term)
+  context   :: [(Name, Term)] -- pairs (Var , Term)
 , rightTerm :: Term
 , rightType :: Term    -- (Term, Term) or (Term, Term, Term)
 } |
   Equality {
-  leftJ     :: [(Variable, Term)]
+  context   :: [(Name, Term)]
 , rightEqL  :: Term
 , rightEqR  :: Term
 , tightType :: Term -- equality t1 = t2 : t3
 } deriving (Eq, Show)
 
-data Term = Variable | FunApp FunctionalSymbol [Term]
+-- was Variable | FunApp FunSym [Term]
+data Term = Var Name | FunApp Name [Term] | Subst Term Name Term
     deriving (Eq, Show)
 
 

@@ -16,7 +16,7 @@ Axioms :
   AxiomOne =
     forall A : ty , B : ty , x.b : tm  -- синтаксис с точкой означает что b : (tm , 1) - b в контексте длины 1?
                                         -- и (x y).b : (tm , 2)? (x free in b)
-      x : A |- b : B |--- x : A |- lam(A , y z . b) : arr(A , B)
+      x : A |- b : B |--- x : A |- lam(A , (y z). b) : arr(A , B)
 
   AxiomTwo =
     forall (x y).b : tm , B : ty , A : ty  -- не ругаться если больше параметров чем использованных
