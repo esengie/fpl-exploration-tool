@@ -1,4 +1,7 @@
 {
+-- Lexer reads tokens, add indents where needed and removes all (!) the empty newlines -- maybe this is bad,
+-- but otherwise <UNTAB> <UNTAB> <TAB> <TAB> is breaking my parser. (Should've read up on happy and alex more, but eh)
+
 module Lexer
   ( Token(..)
   , AlexPosn(..)
@@ -12,7 +15,11 @@ module Lexer
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever, when )
+
 import Debug.Trace
+import Data.Char
+import Data.List
+
 }
 
 %wrapper "monadUserState"
@@ -160,7 +167,8 @@ alexError' (AlexPn _ l c) msg = do
 
 -- A variant of runAlex, keeping track of the path of the file we are lexing.
 runAlex' :: FilePath -> String -> Alex a -> Either String a
-runAlex' fp input a = runAlex input (setFilePath fp >> a)
+runAlex' fp input a = runAlex processedInput (setFilePath fp >> a)
+  where processedInput = intercalate "\n" $ filter (\l -> not $ all isSpace l) (lines input)
 
 readtoks:: Alex [Token]
 readtoks = do
@@ -177,8 +185,7 @@ printHelper (Left s) = [s]
 printHelper (Right r) = map (unLex . detok) r
 
 tokenize::String-> Either String [Token]
-tokenize s =
-         (runAlex' "sad" s readtoks)
+tokenize s = runAlex' "sad" s readtoks
 
 maien :: String -> [String]
 maien input = printHelper (tokenize input)
@@ -233,6 +240,5 @@ setPendingTokens :: [Token] -> Alex ()
 setPendingTokens i = do
   u <- alexGetUserState
   alexSetUserState $ AlexUserState (filePath u) (indentStack u) i
-
 
 }

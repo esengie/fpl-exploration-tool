@@ -35,7 +35,7 @@ data Axiom = Axiom {
 
 data Judgement =
   Statement {  -- rename Judgement
-  context   :: [(Name, Term)] -- pairs (Var , Term)
+  context   :: [(Name, Term)] -- want Variable actually
 , rightTerm :: Term
 , rightType :: Term    -- (Term, Term) or (Term, Term, Term)
 } |
@@ -47,7 +47,7 @@ data Judgement =
 } deriving (Eq, Show)
 
 -- was Variable | FunApp FunSym [Term]
-data Term = Var Name | FunApp Name [Term] | Subst Term Name Term
+data Term = Var Variable | FunApp Name [Term] | Subst Term Name Term
     deriving (Eq, Show)
 
 
