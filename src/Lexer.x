@@ -12,6 +12,7 @@ module Lexer
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever, when )
+import Debug.Trace
 }
 
 %wrapper "monadUserState"
@@ -116,6 +117,7 @@ alexMonadScan' = do
     sc <- alexGetStartCode
     pendTok <- getPendingTokens
     case pendTok of
+      -- Indents, Dedents and TEOF only
       t:ts -> do
         setPendingTokens ts
         return t
@@ -125,7 +127,9 @@ alexMonadScan' = do
           rval <- startWhite a 1
           pt <- getPendingTokens
           setPendingTokens (pt ++ [Token p TEOF])
-          return rval
+          case rval of
+            Token _ TNewLine -> alexMonadScan'
+            _ -> return rval
         AlexError (p, _, _, s) ->
           alexError' p ("lexical error at character '" ++ take 1 s ++ "'")
         AlexSkip inp' _ -> do
@@ -133,7 +137,10 @@ alexMonadScan' = do
           alexMonadScan'
         AlexToken inp' n act -> do
           alexSetInput inp'
-          act (ignorePendingBytes inp) n
+          tmp <- act inp n
+          case tmp of
+            Token _ TNewLine -> alexMonadScan'
+            Token _ _ -> act inp n
 
 -- Signal an error, including a commonly accepted source code position.
 alexError' :: AlexPosn -> String -> Alex a
