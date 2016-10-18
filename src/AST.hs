@@ -3,8 +3,8 @@ module AST -- (AST(..)
   where
 
 data LangSpec = LangSpec {
-  depSorts    :: [Sort]
-, simpleSorts :: [Sort]
+  depSortNames    :: [Name]
+, simpleSortNames :: [Name]
 , funSyms     :: [FunctionalSymbol]
 , axioms      :: [Axiom]
 } deriving (Eq, Show)
@@ -17,7 +17,7 @@ data Sort = DepSort Name !ContextDepth | SimpleSort Name
 
 data FunctionalSymbol = FunSym {
   arguments :: [Sort]
-, result    :: Sort
+, result    :: Name
 } deriving (Eq, Show)
 
 
@@ -28,7 +28,7 @@ data Axiom = Axiom {
   name       :: Name,
   vars       :: [(Variable, Sort)],
   premise    :: [Judgement],
-  conclusion :: Judgement
+  conclusion :: [Judgement]
 } deriving (Eq, Show)
 
 data Judgement =

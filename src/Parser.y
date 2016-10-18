@@ -14,47 +14,55 @@ import Lexer
 %error { happyError }
 
 %token
-      int             { Token _ (TInt $$) }
-      DepSortBeg      { Token _ TDepS }
-      SimpleSortBeg   { Token _ TSimpleS }
-      FunBeg          { Token _ TFunSyms }
-      AxBeg           { Token _ TAxioms }
-      V               { Token _ TForall }
+      int             { Token _ (TInt $$)   }
       ident           { Token _ (TIdent $$) }
-      '='             { Token _ TEq }
-      ':'             { Token _ TColon }
-      '|-'            { Token _ TTurnstile }
-      '|---'          { Token _ TJudgement }
-      ','             { Token _ TComma }
-      '.'             { Token _ TDot }
-      '->'            { Token _ TArrow }
-      '*'             { Token _ TTimes }
-      '('             { Token _ TLParen }
-      ')'             { Token _ TRParen }
-      '['             { Token _ TLSubst }
-      ']'             { Token _ TRSubst }
-      ':='            { Token _ TSubst }
-      '\t'            { Token _ TIndent }
-      '/t'            { Token _ TDedent }
-      '\n'            { Token _ TNewLine } -- currently not used in the parsing stage
+      depSortBeg      { Token _ TDepS       }
+      simpleSortBeg   { Token _ TSimpleS    }
+      funSymBeg          { Token _ TFunSyms    }
+      axBeg           { Token _ TAxioms     }
+      V               { Token _ TForall     }
+      '='             { Token _ TEq         }
+      ':'             { Token _ TColon      }
+      '|-'            { Token _ TTurnstile  }
+      '|---'          { Token _ TJudgement  }
+      ','             { Token _ TComma      }
+      '.'             { Token _ TDot        }
+      '->'            { Token _ TArrow      }
+      '*'             { Token _ TTimes      }
+      '('             { Token _ TLParen     }
+      ')'             { Token _ TRParen     }
+      '['             { Token _ TLSubst     }
+      ']'             { Token _ TRSubst     }
+      ':='            { Token _ TSubst      }
+      '\t'            { Token _ TIndent     }
+      '/t'            { Token _ TDedent     }
+      '\n'            { Token _ TNewLine    } -- currently not used in the parsing stage
 
 %%
 
-LangSpec : DepSorts NotDepSorts FunSyms Axioms { LangSpec $1 $2 $3 $4 }
-         | NotDepSorts DepSorts FunSyms Axioms { LangSpec $2 $1 $3 $4 }
+LangSpec     : DepSorts SimpleSorts FunSyms AxiomsAll { LangSpec $1 $2 $3 $4 }
+             | SimpleSorts DepSorts FunSyms AxiomsAll { LangSpec $2 $1 $3 $4 }
 
-DepSorts :  '+' Term           { Plus $1 $3 }
-         | Exp1 '-' Term           { Minus $1 $3 }
-         | Term                    { Term $1 }
+SimpleSorts  : simpleSortBeg ':' '\t' SortNames '/t'     { $4 }
+DepSorts     : depSortBeg ':' '\t' SortNames '/t'        { $4 }
+SortNames    : ident                        { [$1] }
+             | ident ',' SortNames             { $1 : $3 }
 
-NotDepSorts  : Term '*' Factor         { Times $1 $3 }
-      | Term '/' Factor         { Div $1 $3 }
-      | Factor                  { Factor $1 }
+FunSyms      : funSymBeg ':' '\t' FunSymsH '/t'     { $4 }
+FunSymsH     : FunSym                       { [$1] }
+             | FunSym FunSymsH              { $1 : $2 }
 
-Factor
-      : int                     { Int $1 }
-      | var                     { Var $1 }
-      | '(' Exp ')'             { Brack $2 }
+FunSym       : ident ':' SortsLeft '->' ident { FunSym $3 $5 }
+SortsLeft    : SortLeft                      { [$1] }
+             | SortLeft '*' SortsLeft            { $1 : $3 }
+SortLeft     : ident                         { SimpleSort $1 }
+             | '(' ident ',' int ')'         { DepSort $2 $4 }
+
+AxiomsAll    : axBeg ':' '\t' Axioms '/t' { $4 }
+Axioms       : Axiom                         { [$1] }
+             | Axiom Axioms                  { $1 : $2 }
+Axiom        : ident                         { Axiom $1 [] [] [] }
+
 
 {
 
@@ -65,7 +73,7 @@ happyError :: Token -> Alex a
 happyError (Token p t) =
   alexError' p ("parse error at token '" ++ unLex t ++ "'")
 
-parseExp :: FilePath -> String -> Either String Exp
-parseExp = runAlex' parse
+parseExp :: FilePath -> String -> Either String LangSpec
+parseExp fp st = runAlex' fp st parse
 
 }
