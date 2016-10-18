@@ -15,6 +15,11 @@ import Lexer
 
 %token
       int             { Token _ (TInt $$) }
+      DepSortBeg      { Token _ TDepS }
+      SimpleSortBeg   { Token _ TSimpleS }
+      FunBeg          { Token _ TFunSyms }
+      AxBeg           { Token _ TAxioms }
+      V               { Token _ TForall }
       ident           { Token _ (TIdent $$) }
       '='             { Token _ TEq }
       ':'             { Token _ TColon }
@@ -31,16 +36,16 @@ import Lexer
       ':='            { Token _ TSubst }
       '\t'            { Token _ TIndent }
       '/t'            { Token _ TDedent }
-      '\n'            { Token _ TNewLine }
+      '\n'            { Token _ TNewLine } -- currently not used in the parsing stage
 
 %%
 
-LangSpec   : let var '=' Exp in Exp  { Let $2 $4 $6 }
-       | Exp1                    { Exp1 $1 }
+LangSpec : DepSorts NotDepSorts FunSyms Axioms { LangSpec $1 $2 $3 $4 }
+         | NotDepSorts DepSorts FunSyms Axioms { LangSpec $2 $1 $3 $4 }
 
-DepSorts  : Exp1 '+' Term           { Plus $1 $3 }
-      | Exp1 '-' Term           { Minus $1 $3 }
-      | Term                    { Term $1 }
+DepSorts :  '+' Term           { Plus $1 $3 }
+         | Exp1 '-' Term           { Minus $1 $3 }
+         | Term                    { Term $1 }
 
 NotDepSorts  : Term '*' Factor         { Times $1 $3 }
       | Term '/' Factor         { Div $1 $3 }

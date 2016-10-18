@@ -25,8 +25,8 @@ tokens :-
   "--".*                                ; -- kill comments
   \n (@indent)*                         { startWhite        }
   $digit+                               { lex (TInt . read) }
-  "DependentSorts"                      { lex' TDeps        }
-  "SimpleSorts"                         { lex' TNotDeps     }
+  "DependentSorts"                      { lex' TDepS        }
+  "SimpleSorts"                         { lex' TSimpleS     }
   "FunctionalSymbols"                   { lex' TFunSyms     }
   "Axioms"                              { lex' TAxioms      }
   "forall"                              { lex' TForall      }
@@ -63,8 +63,8 @@ data Token = Token AlexPosn TokenClass
 
 data TokenClass
   = TInt Int
-  | TDeps
-  | TNotDeps
+  | TDepS
+  | TSimpleS
   | TFunSyms
   | TAxioms
   | TForall
@@ -186,8 +186,8 @@ maien input = printHelper (tokenize input)
 -- For nice parser error messages.
 unLex :: TokenClass -> String
 unLex (TInt i) = show i
-unLex TDeps = "!Deps"
-unLex TNotDeps = "!NDeps"
+unLex TDepS = "!DepS"
+unLex TSimpleS = "!SimpleS"
 unLex TFunSyms = "!FunsSyms"
 unLex TAxioms = "!Axioms"
 unLex TForall = "FORALL"

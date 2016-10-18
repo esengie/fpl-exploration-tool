@@ -4,7 +4,7 @@ module AST -- (AST(..)
 
 data LangSpec = LangSpec {
   depSorts    :: [Sort]
-, notDepSorts :: [Sort]
+, simpleSorts :: [Sort]
 , funSyms     :: [FunctionalSymbol]
 , axioms      :: [Axiom]
 } deriving (Eq, Show)
@@ -12,7 +12,7 @@ data LangSpec = LangSpec {
 type Name = String
 type ContextDepth = Int
 
-data Sort = DepSort Name !ContextDepth | NDepSort Name
+data Sort = DepSort Name !ContextDepth | SimpleSort Name
   deriving (Eq, Show)
 
 data FunctionalSymbol = FunSym {
@@ -21,7 +21,7 @@ data FunctionalSymbol = FunSym {
 } deriving (Eq, Show)
 
 
-data Variable = DepVar [Name] Name | NDepVar Name
+data Variable = DepVar [Name] Name | SimpleVar Name
   deriving (Eq, Show)
 
 data Axiom = Axiom {

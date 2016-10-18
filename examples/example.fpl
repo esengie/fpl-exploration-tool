@@ -1,12 +1,12 @@
 -- <- Коммент, + индентация имеет значение
 
-DepSorts :
+DependentSorts :
   tm, tn -- depends on tm
 
-InDepSorts :
+SimpleSorts :
   ty
 
-FunSyms :
+FunctionalSymbols :
   arr : ty * ty -> ty
   lam : ty * (tm , 1) -> tm
   app : (tm , 0) * (tm , 0) -> tm
