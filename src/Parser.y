@@ -62,7 +62,7 @@ AxiomsAll       :   axBeg ':' '\t' Axioms '/t'                { $4 }
 Axioms          :   Axiom                                     { [$1] }
                 |   Axiom Axioms                              { $1 : $2 }
 Axiom           :   ident '=' '\t' Forall '\t'
-                          Premise '|---' Judgement '/t' '/t'  { Axiom $1 $4 $6 $8 }
+                          Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
 
 Forall          :   V ForallVars                              { $2 }
 ForallVars      :   ForallVar                                 { [$1] }
@@ -75,10 +75,14 @@ VarName         :   ident                                     { SimpleVar $1 }
 SpaceSepNames   :   ident                                     { [$1] }
                 |   ident SpaceSepNames                       { $1 : $2 }
 
-Premise         :   Judgement                                 { [$1] }
-                |   Judgement ',' Premise                     { $1 : $3 }
+Premise         :   JudgementWithEq                                 { [$1] }
+                |   JudgementWithEq ',' Premise                     { $1 : $3 }
 
-Judgement       :   '|-' Term ':' Term                        { Statement [] $2 $4 }
+JudgementNoEq   :   '|-' Term ':' Term                        { Statement [] $2 $4 }
+                |   Context '|-' Term ':' Term                { Statement $1 $3 $5 }
+
+
+JudgementWithEq :   '|-' Term ':' Term                        { Statement [] $2 $4 }
                 |   '|-' Term '=' Term ':' Term               { Equality [] $2 $4 $6 }
                 |   Context '|-' Term ':' Term                { Statement $1 $3 $5 }
                 |   Context '|-' Term '=' Term ':' Term       { Equality $1 $3 $5 $7 }
@@ -86,12 +90,20 @@ Judgement       :   '|-' Term ':' Term                        { Statement [] $2 
 Context         :   ident ':' Term                            { [($1, $3)] }
                 |   ident ':' Term ',' Context                { ($1, $3) : $5 }
 
-Term            :   VarName                                   { Var $1 }
+
+---      neeed [] much tighter than others + no (a b). stuff on the upper levels!
+Term            :   ident                                     { Var $1 }
                 |   ident '(' CommaSepTerms ')'               { FunApp $1 $3 }
                 |   Term '[' ident ':=' Term ']'              { Subst $1 $3 $5 }
 
-CommaSepTerms   :   Term                                      { [$1] }
-                |   Term ',' CommaSepTerms                    { $1 : $3 }
+CombTerm        :   Term                                     {  $1  }
+                |   InnerTerm                                {  $1  }
+
+InnerTerm       :   ident '.' Term                           { Term [$1] $3}
+                |   '(' SpaceSepNames ')' '.' Term            { Term $2 $5}
+
+CommaSepTerms   :   CombTerm                                      { [$1] }
+                |   CombTerm ',' CommaSepTerms                    { $1 : $3 }
 
 
 {

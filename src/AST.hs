@@ -27,7 +27,7 @@ data Variable = DepVar [Name] Name | SimpleVar Name
 
 data Axiom = Axiom {
   nameAx     :: Name,
-  forallVars       :: [(Variable, SortName)],
+  forallVars :: [(Variable, SortName)],
   premise    :: [Judgement],
   conclusion :: Judgement
 } deriving (Eq, Show)
@@ -46,8 +46,9 @@ data Judgement =
 } deriving (Eq, Show)
 
 -- was Variable | FunApp FunSym [Term]
-data Term = Var Variable | FunApp Name [Term] | Subst Term Name Term
+data Term = Var Name | Term [Name] Term  | FunApp Name [Term] | Subst Term Name Term
     deriving (Eq, Show)
+-- doesn't take context into account ->
 
 
 

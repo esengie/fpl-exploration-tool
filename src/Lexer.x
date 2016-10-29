@@ -168,7 +168,7 @@ alexError' (AlexPn _ l c) msg = do
 -- A variant of runAlex, keeping track of the path of the file we are lexing.
 runAlex' :: FilePath -> String -> Alex a -> Either String a
 runAlex' fp input a = runAlex processedInput (setFilePath fp >> a)
-  where processedInput = intercalate "\n" $ filter (\l -> not $ all isSpace l) (lines input)
+  where processedInput = intercalate "\n" $ map (\l -> if (not $ all isSpace l) then l else "--") (lines input)
 
 readtoks:: Alex [Token]
 readtoks = do

@@ -1,34 +1,53 @@
 -- <- Коммент, + индентация имеет значение
 
 DependentSorts :
-  tm, tn -- depends on tm
+  tm, tn -- depends on tm, (tm always is!!!!) tm always dependent
 
 SimpleSorts :
-  ty
+  ty   -- ty always, mb dep mb indeo
 
 FunctionalSymbols :
   arr : ty * ty -> ty
-  lam : ty * (tm , 1) -> tm
-  app : (tm , 0) * (tm , 0) -> tm
-  -- контекст в синтаксисе
+  lam : ty * (tm , 1) -> tm  -- говорим что связывают 1 перем (\x -> ...)
+  app : (tm , 0) * (tm , 0) -> tm -- tm справа ноль, а слева всегда больше ноля? --------------------------
 
 Axioms :
+-- (tm , 0) -- означает \x -> x, (tm , 1) \x -> y, var always term
+
+-- x.B -- func from tm to ty
+-- (ty , 2) : tm -> tm -> ty
+-- context - only vars
   AxiomOne =
-    forall A : ty , B : ty , x.b : tm  -- синтаксис с точкой означает что b : (tm , 1) - b в контексте длины 1?
-                                        -- и (x y).b : (tm , 2)? (x free in b)
-      x : A |- b : B |--- x : A |- lam(A , (y z). b) : arr(A , B)
+   ------  b : (tm , 1) -- мало, надо знать имена переменных в контексте!
+    forall A : ty , B : ty , x.b : tm  -- х есть переменная (у метаперем есть сорт)
+      x : A |- b : B |--- |- lam(A , (x y). b) : arr(A , B) -- переменные это переменные сорта какого-то
+                                    -- incorrect, not typecheck, needs (tm , 1)
+                                    -- Gamma is everywhere, so we check if we have x in context not context equality
   AxiomTwo =
     forall (x y).b : tm , B : ty , A : ty  -- не ругаться если больше параметров чем использованных
-      x : A |- b : B , |- a : A |---- |- app( lam(A , x.b) , a) = b[ x := a ] : B -- имеем subst по дефолту
+      x : A |- b : B , |- a : A |---- |- app( lam(A , x.b) , a) : B -- имеем subst по дефолту
                                                         -- что-то ещё есть по дефолту? (:, =, subst)
-
 
   AxiomThree =
     forall (x y).b : tm , z.B : tn , A : ty , a : tm -- meta : (for sorts)
-      x : A |- b : B , |- a : A |--- |- app( lam(A , x.b) , a) = b[ x := a ] : B [ z := a ] -- следить за свободными
+      x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ] -- следить за свободными
 
+-- ReductionRules:
+--   RuleOne =
+--     adsfflkjklasdfdjksdfd
+
+
+  -- left no subst (but why?)
+  -- unit type is hard - why?
+
+  -- no equality in the result, but can be in the premise
 
 
 -- can context become larger? (yes), and context of the variable?
 -- equality, subst and isTypeOf (lam(A , x.b) : arr(A , B))
 -- right of forall can it have terms or not? (x.b : arr(A , B) -- no because ':' is meta op
+
+
+
+-- end goal -- ast + parser + typechecker of lang
+-- then add implicit params
