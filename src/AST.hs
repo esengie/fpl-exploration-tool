@@ -15,10 +15,18 @@ type ContextDepth = Int
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq, Show)
 
+getSortName :: Sort -> SortName
+getSortName (DepSort n _) = n
+getSortName (SimpleSort n) = n
+
+isDepSort :: Sort -> Bool
+isDepSort (DepSort _ _) = True
+isDepSort _ = False
+
 data FunctionalSymbol = FunSym {
   nameFun   :: Name
 , arguments :: [Sort]
-, result    :: SortName
+, result    :: Sort       --- hack in the parser that gets solved in the checking stage
 } deriving (Eq, Show)
 
 
@@ -46,7 +54,7 @@ data Judgement =
 } deriving (Eq, Show)
 
 -- was Variable | FunApp FunSym [Term]
-data Term = Var Name | Term [Name] Term  | FunApp Name [Term] | Subst Term Name Term
+data Term = Var Name | TermInCtx [Name] Term  | FunApp Name [Term] | Subst Term Name Term
     deriving (Eq, Show)
 -- doesn't take context into account ->
 

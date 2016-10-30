@@ -52,7 +52,7 @@ FunSyms         :   funSymBeg ':' '\t' FunSymsH '/t'          { $4 }
 FunSymsH        :   FunSym                                    { [$1] }
                 |   FunSym FunSymsH                           { $1 : $2 }
 
-FunSym          :   ident ':' SortsLeft '->' ident            { FunSym $1 $3 $5 }
+FunSym          :   ident ':' SortsLeft '->' ident            { FunSym $1 $3 (SimpleSort $5) }  -- hacky
 SortsLeft       :   SortLeft                                  { [$1] }
                 |   SortLeft '*' SortsLeft                    { $1 : $3 }
 SortLeft        :   ident                                     { SimpleSort $1 }
@@ -62,7 +62,7 @@ AxiomsAll       :   axBeg ':' '\t' Axioms '/t'                { $4 }
 Axioms          :   Axiom                                     { [$1] }
                 |   Axiom Axioms                              { $1 : $2 }
 Axiom           :   ident '=' '\t' Forall '\t'
-                          Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
+                      Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
 
 Forall          :   V ForallVars                              { $2 }
 ForallVars      :   ForallVar                                 { [$1] }
@@ -75,8 +75,8 @@ VarName         :   ident                                     { SimpleVar $1 }
 SpaceSepNames   :   ident                                     { [$1] }
                 |   ident SpaceSepNames                       { $1 : $2 }
 
-Premise         :   JudgementWithEq                                 { [$1] }
-                |   JudgementWithEq ',' Premise                     { $1 : $3 }
+Premise         :   JudgementWithEq                           { [$1] }
+                |   JudgementWithEq ',' Premise               { $1 : $3 }
 
 JudgementNoEq   :   '|-' Term ':' Term                        { Statement [] $2 $4 }
                 |   Context '|-' Term ':' Term                { Statement $1 $3 $5 }
@@ -96,14 +96,14 @@ Term            :   ident                                     { Var $1 }
                 |   ident '(' CommaSepTerms ')'               { FunApp $1 $3 }
                 |   Term '[' ident ':=' Term ']'              { Subst $1 $3 $5 }
 
-CombTerm        :   Term                                     {  $1  }
-                |   InnerTerm                                {  $1  }
+CombTerm        :   Term                                      {  $1  }
+                |   InnerTerm                                 {  $1  }
 
-InnerTerm       :   ident '.' Term                           { Term [$1] $3}
-                |   '(' SpaceSepNames ')' '.' Term            { Term $2 $5}
+InnerTerm       :   ident '.' Term                            { TermInCtx [$1] $3}
+                |   '(' SpaceSepNames ')' '.' Term            { TermInCtx $2 $5}
 
-CommaSepTerms   :   CombTerm                                      { [$1] }
-                |   CombTerm ',' CommaSepTerms                    { $1 : $3 }
+CommaSepTerms   :   CombTerm                                  { [$1] }
+                |   CombTerm ',' CommaSepTerms                { $1 : $3 }
 
 
 {
