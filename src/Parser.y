@@ -67,10 +67,10 @@ Axiom           :   ident '=' '\t' Forall '\t'
 Forall          :   V ForallVars                              { $2 }
 ForallVars      :   ForallVar                                 { [$1] }
                 |   ForallVar ',' ForallVars                  { $1 : $3 }
-ForallVar       :   VarName ':' ident                         { ($1 , $3) }
-VarName         :   ident                                     { SimpleVar $1 }
-                |   ident '.' ident                           { DepVar [$1] $3 }
-                |   '(' SpaceSepNames ')' '.' ident           { DepVar $2 $5 }
+ForallVar       :   VarName ':' ident                         { ($1 , SimpleSort $3) }  -- hacky
+VarName         :   ident                                     { MetaVar [] $1 }
+                |   ident '.' ident                           { MetaVar [$1] $3 }
+                |   '(' SpaceSepNames ')' '.' ident           { MetaVar $2 $5 }
 
 SpaceSepNames   :   ident                                     { [$1] }
                 |   ident SpaceSepNames                       { $1 : $2 }

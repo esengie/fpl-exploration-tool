@@ -1,15 +1,18 @@
 -- <- Коммент, + индентация имеет значение
 
-DependentSorts :
-  tm, tn -- depends on tm, (tm always is!!!!) tm always dependent
+DependentSorts : -- meaning context dependent(!)
+  tm, tn -- all depsorts depend on tm, (tm always is!!!!) tm always dependent
 
 SimpleSorts :
-  ty   -- ty always, mb dep mb indeo
+  ty   -- ty always, mb dep mb indep
 
 FunctionalSymbols :
   arr : ty * ty -> ty
-  lam : ty * (tm , 1) -> tm  -- говорим что связывают 1 перем (\x -> ...)
-  app : (tm , 0) * (tb , 0) -> tm -- tm справа ноль, а слева всегда больше ноля? --------------------------
+  cart : (tn , 0) * (tn , 0) -> tn
+  pi : (tn , 0) * (tn , 1) -> tn  -- B : A -> U, but we have B(x) - so we need x in our context
+  sigma : (tn , 0) * (tn , 1) -> tn
+  lam : ty * (tm , 1) -> tm  -- говорим что связывают 1 перем (\x -> ...) - термам нужен контекст (от него зависимость)
+  app : (tm , 0) * (tm , 0) -> tm -- tm справа ноль, а слева всегда больше ноля? --------------------------
 
 Axioms :
 -- (tm , 0) -- означает \x -> x, (tm , 1) \x -> y, var always term
@@ -29,24 +32,28 @@ Axioms :
                                                         -- что-то ещё есть по дефолту? (:, =, subst)
 
   AxiomThree =
-    forall (x y).b : tm , z.B : tn , A : ty , a : tm -- meta : (for sorts)
+    forall (x y).b : tm , z.B : tn , A : ty  -- meta : (for sorts)
       x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ] -- следить за свободными
 
+  DepApp =
+    forall x.B : ty, A : ty, e1 : tm , e2 : tm
+      |- e1 : pi(A , x.B) , |- e2 : A  |--- |- app(e1 , e2) : B[ x := e2 ]
+
+
 -- ReductionRules:
---   RuleOne =
---     adsfflkjklasdfdjksdfd
+--  Beta =
+--    forall x.b : tm , A : ty, a : tm
+--      app(lam(A, x.b), a) => b [x := a]
 
-
-  -- left no subst (but why?)
+  -- no subst on the left here
   -- unit type is hard - why?
 
-  -- no equality in the result, but can be in the premise
+  -- no equality in the result, but can be in the premise!
 
 
 -- can context become larger? (yes), and context of the variable?
 -- equality, subst and isTypeOf (lam(A , x.b) : arr(A , B))
 -- right of forall can it have terms or not? (x.b : arr(A , B) -- no because ':' is meta op
-
 
 
 -- end goal -- ast + parser + typechecker of lang

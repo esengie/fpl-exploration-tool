@@ -17,49 +17,63 @@ import AST
 import Parser (parseLang)
 
 type TypeError = String
-data VarMap    = VarMap {
-  _depSorts     :: Set.Set SortName
-, _simpleSorts  :: Set.Set SortName
-, _funSyms      :: Map.Map Name FunctionalSymbol
+data SymbolTable = SymbolTable {
+  _depSorts      :: Set.Set SortName
+, _simpleSorts   :: Set.Set SortName
+, _funSyms       :: Map.Map Name FunctionalSymbol
+, _axioms        :: Map.Map Name Axiom
+-- , _reductions    :: Map.Map Name
 } deriving (Eq, Show)
 
-makeLenses ''VarMap
+makeLenses ''SymbolTable
 
-type TypeCheckM = StateT VarMap (Either TypeError)
+lookupSortByName :: ContextDepth -> SortName -> TypeCheckM Sort
+lookupSortByName depth name = do
+  st <- get
+  if Set.member name (st^.simpleSorts)
+    then return (SimpleSort name)
+    else
+      if Set.member name (st^.depSorts)
+        then return (DepSort name depth)
+      else
+        throwError $ "Sort " ++ name ++ " is not defined"
 
-varsInit :: VarMap
-varsInit = VarMap Set.empty Set.empty Map.empty
+type TypeCheckM = StateT SymbolTable (Either TypeError)
 
-runTypecheck :: Either String LangSpec -> Either TypeError VarMap
+varsInit :: SymbolTable
+varsInit = SymbolTable Set.empty Set.empty Map.empty Map.empty
+
+runTypecheck :: Either String LangSpec -> Either TypeError SymbolTable
 runTypecheck lsp = do
   lsp' <- lsp
   execStateT (typecheck lsp') varsInit
 
-typecheck :: LangSpec -> TypeCheckM ()
-typecheck lsp = do
-    typecheckSorts lsp
-    typecheckFunSyms (AST.funSyms lsp)
-
-checkForDups :: [SortName] -> Either TypeError (Set.Set SortName)
-checkForDups lst = do
+-- SortName or VarName
+checkForDups :: String -> [Name] -> Either TypeError (Set.Set Name)
+checkForDups msg lst = do
   let deps = Set.fromList lst
-  when (length lst /= Set.size deps) $ throwError "Duplicates in sorts"
+  when (length lst /= Set.size deps) $ throwError msg
   return deps
 
 typecheckSorts :: LangSpec -> TypeCheckM ()
 typecheckSorts lsp = do
-  deps <- lift . checkForDups $ AST.depSortNames lsp
-  sims <- lift . checkForDups $ AST.simpleSortNames lsp
+  deps <- lift . checkForDups "Duplicates in sorts" $ AST.depSortNames lsp
+  sims <- lift . checkForDups "Duplicates in sorts" $ AST.simpleSortNames lsp
   when (Set.size (Set.intersection sims deps) /= 0) $ throwError "Dependent and simple sorts can't intersect"
   modify $ set depSorts deps
   modify $ set simpleSorts sims
 
 
--- checks and modifies the return sort if need be
+-- Checks func redefinition, checks depsorts and simplesorts
+-- Adds the return sort
 checkFun :: FunctionalSymbol -> TypeCheckM FunctionalSymbol
 checkFun fs@(FunSym n args res) = do
   st <- get
-  -- Adding the type knowledge here
+
+  when (isJust $ Map.lookup n (st^.TypeCheck.funSyms)) $
+    throwError $ "Function redefinition " ++ n
+
+  -- Adding the type knowledge of the result here
   let fs' = if Set.member (getSortName res) (st^.simpleSorts)
               then fs
               else FunSym n args (DepSort (getSortName res) 0)
@@ -70,17 +84,76 @@ checkFun fs@(FunSym n args res) = do
   unless (isIn (not . isDepSort) (st^.simpleSorts)) $
     throwError $ show n ++ " functional symbol's simple sorts are not completely defined"
 
-  when (isJust $ Map.lookup (nameFun fs') (st^.TypeCheck.funSyms)) $
-    throwError $ "Function redefinition " ++ nameFun fs'
   return fs'
 
--- typecheck and populate the state
+-- typecheck and populate the state (sorts of return types may need modification - we do it here)
 typecheckFunSyms :: [FunctionalSymbol] -> TypeCheckM ()
 typecheckFunSyms [] = return ()
 typecheckFunSyms (fs : fss) = do
   fs' <- checkFun fs
   modify $ over TypeCheck.funSyms (Map.insert (nameFun fs') fs')
   typecheckFunSyms fss
+
+-- need to check forall var types and change them if need be
+typecheckAxioms :: [Axiom] -> TypeCheckM ()
+typecheckAxioms [] = return ()
+typecheckAxioms (ax : axs) = do
+  ax' <- checkAx ax
+  modify $ over TypeCheck.axioms (Map.insert (nameAx ax') ax')
+  typecheckAxioms axs
+
+
+-- check redefinition, fix forallvars, check types inside each judgement
+checkAx :: Axiom -> TypeCheckM Axiom
+checkAx ax@(Axiom name forall prem concl) = do
+  st <- get
+
+  when (isJust $ Map.lookup name (st^.TypeCheck.axioms)) $
+    throwError $ "Axiom redefinition: " ++ name
+
+  when (isEqJudgement concl) $
+    throwError $ "Equality is not allowed in the conclusion of typing rules: " ++ name
+
+  forall' <- checkForallVars forall
+  prem' <- mapM (checkJudgem forall') prem
+  concl' <- checkJudgem forall' concl
+
+  return (Axiom name forall' prem' concl')
+
+-- checks and modifies one vars and checks for dups
+checkForallVars :: [(MetaVar, Sort)] -> TypeCheckM [(MetaVar, Sort)]
+checkForallVars forall = do
+  -- just map the function inside a monad (yup this is just plumbing for making args fit)
+  forall' <- mapM (\ (a , b) -> do
+    b' <- lookupSortByName (length $ mContext a) (getSortName b)
+    return (a , b') ) forall
+
+  -- check for dups
+  mapM_ (\ (a , b) -> lift . checkForDups "Duplicates in captures" $ mName a : mContext a) forall'
+  lift . checkForDups "Duplicates in metas" $ map (\ (a , b) -> mName a) forall'
+  return forall'
+
+checkJudgem :: [(MetaVar, Sort)] -> Judgement -> TypeCheckM Judgement
+checkJudgem meta st@(Statement ctx tm ty) = do
+  checkAxContext meta (map fst ctx)
+  checkTerm meta tm
+  checkType meta ty
+  mapM (checkType meta) (map snd ctx)
+  return st
+
+checkAxContext :: [(MetaVar, Sort)] -> [VarName] -> TypeCheckM ()
+checkAxContext meta vns = mapM_ (checkOneVar meta) vns
+  where checkOneVar meta v = 
+
+typecheck :: LangSpec -> TypeCheckM ()
+typecheck lsp = do
+    typecheckSorts lsp
+    typecheckFunSyms (AST.funSyms lsp)
+    typecheckAxioms (AST.axioms lsp)
+    typecheckReductions
+
+typecheckReductions :: TypeCheckM ()
+typecheckReductions = return ()
 
 -- State = Set DepVars, Set Vars, Map funcs,
 
@@ -92,10 +165,13 @@ main' file = do
     Left err -> "hmm " ++ show err
     x -> show x
 
-
-
-
-
+mainP :: FilePath -> IO ()
+mainP file = do
+  str <- readFile file
+  let k = parseLang (show file) str
+  case k of
+    Right x -> putStr $ show x
+    Left x -> putStr x
 
 
 
