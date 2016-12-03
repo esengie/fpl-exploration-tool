@@ -41,6 +41,9 @@ data MetaVar = MetaVar {
 , mName     :: VarName
 } deriving (Eq, Show)
 
+varSort :: Sort
+varSort = DepSort "tm" 0
+
 data Axiom = Axiom {
   nameAx     :: Name,
   forallVars :: [(MetaVar, Sort)],

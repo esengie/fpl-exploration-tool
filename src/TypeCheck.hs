@@ -130,20 +130,25 @@ checkForallVars forall = do
 
   -- check for dups
   mapM_ (\ (a , b) -> lift . checkForDups "Duplicates in captures" $ mName a : mContext a) forall'
+
+  -- adding binders to list
+  let vars = Set.toList . Set.fromList $ concatMap (mContext . fst) forall'  -------------------------------- usage of tm
+  let vars' = map (\x -> (MetaVar [] x , varSort)) vars
+
   lift . checkForDups "Duplicates in metas" $ map (\ (a , b) -> mName a) forall'
-  return forall'
+
+  return $ vars' ++ forall'
 
 checkJudgem :: [(MetaVar, Sort)] -> Judgement -> TypeCheckM Judgement
 checkJudgem meta st@(Statement ctx tm ty) = do
-  checkAxContext meta (map fst ctx)
-  checkTerm meta tm
-  checkType meta ty
+--  checkTerm meta tm
+--  checkType meta ty
+  mapM (checkTerm varSort meta) (map fst ctx)
   mapM (checkType meta) (map snd ctx)
   return st
 
-checkAxContext :: [(MetaVar, Sort)] -> [VarName] -> TypeCheckM ()
-checkAxContext meta vns = mapM_ (checkOneVar meta) vns
-  where checkOneVar meta v = 
+checkTerm :: [(MetaVar, Sort)] -> Sort -> Term -> TypeCheckM ()
+checkTerm meta vns = undefined
 
 typecheck :: LangSpec -> TypeCheckM ()
 typecheck lsp = do

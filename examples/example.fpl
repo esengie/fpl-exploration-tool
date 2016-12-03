@@ -32,7 +32,7 @@ Axioms :
                                                         -- что-то ещё есть по дефолту? (:, =, subst)
 
   AxiomThree =
-    forall (x y).b : tm , z.B : tn , A : ty  -- meta : (for sorts)
+    forall (x y).b : tm , z.B : tn , A : ty  -- meta : (for sorts) 
       x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ] -- следить за свободными
 
   DepApp =
