@@ -8,7 +8,7 @@ data LangSpec = LangSpec {
   depSortNames    :: [SortName]
 , simpleSortNames :: [SortName]
 , funSyms         :: [FunctionalSymbol]
-, axioms          :: [Axiom]
+, axioms          :: [Axiom] -- one axiom per funSym + equality guys
 } deriving (Eq, Show)
 
 -- instance Show LangSpec where

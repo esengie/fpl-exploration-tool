@@ -15,8 +15,7 @@ FunctionalSymbols :
   app : (tm , 0) * (tm , 0) -> tm -- tm справа ноль, а слева всегда больше ноля? --------------------------
 
 Axioms :
--- (tm , 0) -- означает \x -> x (нет других в котексте); (tm , 1) \x -> y,(есть у в контексте)
--- + var always term
+-- (tm , 0) -- означает \x -> x; (tm , 1) \x -> y, var always term
 
 -- x.B -- func from tm to ty
 -- (ty , 2) : tm -> tm -> ty

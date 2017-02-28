@@ -1,6 +1,6 @@
 This a pretty much work-in-progress.
 
-The project is aimed at defining depedently typed languages via specifying their inference and reduction rules.
+The project is aimed at defining dependently typed languages via specifying their inference and reduction rules.
 
 The program then generates our target language's parser and typechecker, so we can play around with the language.
 
