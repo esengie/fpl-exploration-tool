@@ -8,7 +8,7 @@ data LangSpec = LangSpec {
   depSortNames    :: [SortName]
 , simpleSortNames :: [SortName]
 , funSyms         :: [FunctionalSymbol]
-, axioms          :: [Axiom] -- one axiom per funSym + equality guys
+, axioms          :: [Axiom]
 } deriving (Eq, Show)
 
 -- instance Show LangSpec where
@@ -72,7 +72,10 @@ isEqJudgement Equality{} = True
 isEqJudgement _ = False
 
 -- was Variable | FunApp FunSym [Term]
-data Term = Var VarName | TermInCtx [VarName] Term  | FunApp Name [Term] | Subst Term VarName Term
+data Term = Var VarName
+          | TermInCtx [VarName] Term
+          | FunApp Name [Term]
+          | Subst Term VarName Term
     deriving (Eq, Show)
 -- doesn't take context into account ->
 
