@@ -51,6 +51,11 @@ data Axiom = Axiom {
   conclusion :: Judgement
 } deriving (Eq, Show)
 
+lookupName :: (a -> Name) -> Name -> [(a, b)] -> Either String (a, b)
+lookupName idf name ((a, b) : xs) | idf a == name = return (a , b)
+  | otherwise = lookupName idf name xs
+lookupName _ _ _ = Left "Name not found!"
+
 -- instance Show Axiom where
 --   show (Axiom n forall prem concl) = show forall
 
@@ -72,11 +77,16 @@ isEqJudgement Equality{} = True
 isEqJudgement _ = False
 
 -- was Variable | FunApp FunSym [Term]
-data Term = Var VarName
-          | TermInCtx [VarName] Term
+data Term = Var VarName              -- xyz
+          | TermInCtx [VarName] Term -- (x y).asd
           | FunApp Name [Term]
           | Subst Term VarName Term
     deriving (Eq, Show)
+
+isFunSym :: Term -> Bool
+isFunSym FunApp{} = True
+isFunSym _ = False
+
 -- doesn't take context into account ->
 
 

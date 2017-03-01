@@ -21,7 +21,7 @@ data SymbolTable = SymbolTable {
 , _simpleSorts   :: Set.Set SortName
 , _funSyms       :: Map.Map Name FunctionalSymbol
 , _axioms        :: Map.Map Name Axiom
-, _iSymAxiomMap     :: Map.Map Name Name -- intro axioms of funSyms
+, _iSymAxiomMap  :: Map.Map Name Name -- intro axioms of funSyms
 -- , _reductions    :: Map.Map Name
 } deriving (Eq, Show)
 
@@ -29,6 +29,7 @@ makeLenses ''SymbolTable
 
 type TypeCheckM = StateT SymbolTable (Either TypeError)
 type TypeError = String
+type Context = [(MetaVar, Sort)]
 
 varsInit :: SymbolTable
 varsInit = SymbolTable Set.empty Set.empty Map.empty Map.empty Map.empty
@@ -140,6 +141,9 @@ checkAx ax@(Axiom name forall prem concl) = do
   when (isEqJudgement concl) $
     throwError $ "Equality is not allowed in the conclusion of typing rules: " ++ name ++ "\nUse reductions"
 
+  -- unless (isFunSym tm) $
+  --   throwError $ "Statements must define fun syms\n" ++ show st
+
   forall' <- checkForallVars forall
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl
@@ -178,23 +182,38 @@ checkForallVars forall = do
   let vars = Set.toList . Set.fromList $ concatMap (mContext . fst) forall'  -------------------------------- usage of tm
   let vars' = map (\x -> (MetaVar [] x , varSort)) vars
 
-  return $ forall' -- ++ vars'
+  return forall' -- ++ vars'
 
+-- given meta vars (forall) and a judgement - typechecks it
 checkJudgem :: [(MetaVar, Sort)] -> Judgement -> TypeCheckM Judgement
 checkJudgem meta st@(Statement ctx tm ty) = do
---  checkTerm meta tm
---  checkType meta ty
-  mapM (checkTerm varSort meta) (map fst ctx)
-  mapM (checkType meta) (map snd ctx)
+  meta' <- checkCtxVars meta
+  checkTerm meta' tm
+  checkTerm meta' ty
   return st
 
-checkTerm :: [(MetaVar, Sort)] -> Sort -> Term -> TypeCheckM ()
+checkCtxVars ::
+
+-- Given a context (forall) and the sort of the term check it's correctness
+-- Not all high level terms have to be sort checked (only statements)
+checkTerm :: [(MetaVar, Sort)] -> Term -> TypeCheckM ()
+-- проверить все аппы на корректность сортов
+-- все сабсты на корректность перем
+-- передаем контекст внутрь
 checkTerm meta vns = undefined
 
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Reductions
+typeCheckReductions :: TypeCheckM ()
+typeCheckReductions = return ()
 
 
-typecheckReductions :: TypeCheckM ()
-typecheckReductions = return ()
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Main
 
 -- State = Set DepVars, Set Vars, Map funcs,
 
