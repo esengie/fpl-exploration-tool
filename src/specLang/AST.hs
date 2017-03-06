@@ -1,6 +1,7 @@
 module AST
   where
 
+import qualified Data.Set as Set
 -- this AST is used as output of parsing and input of typechecking
 -- this means there some things that are not fully correct after parsing
 -- like some sorts are assumed independent, but in reality they are
@@ -51,10 +52,13 @@ data Axiom = Axiom {
   conclusion :: Judgement
 } deriving (Eq, Show)
 
-lookupName :: (a -> Name) -> Name -> [(a, b)] -> Either String (a, b)
-lookupName idf name ((a, b) : xs) | idf a == name = return (a , b)
-  | otherwise = lookupName idf name xs
-lookupName _ _ _ = Left "Name not found!"
+lookupName :: (a -> Name) -> Name -> [a] -> Either String a
+lookupName f = lookupName' (\x y -> f x == y)
+
+lookupName' :: (a -> Name -> Bool) -> Name -> [a] -> Either String a
+lookupName' idf name (x : xs) | idf x name = return x
+  | otherwise = lookupName' idf name xs
+lookupName' _ name _ = Left $ "Name " ++ name ++ " not found!"
 
 -- instance Show Axiom where
 --   show (Axiom n forall prem concl) = show forall
@@ -71,6 +75,8 @@ data Judgement =
 , eqR  :: Term
 , jType :: Term -- equality t1 = t2 : t3
 } deriving (Eq, Show)
+-- def as maybe
+--
 
 isEqJudgement :: Judgement -> Bool
 isEqJudgement Equality{} = True
@@ -87,6 +93,11 @@ isFunSym :: Term -> Bool
 isFunSym FunApp{} = True
 isFunSym _ = False
 
+allUnique :: Ord a => [a] -> [a] -> Bool
+allUnique a b = length a + length b == Set.size (Set.intersection (Set.fromList a) (Set.fromList b))
+
+subset :: Ord a => [a] -> [a] -> Bool
+subset a b = 0 == Set.size (Set.difference (Set.fromList a) (Set.fromList b))
 -- doesn't take context into account ->
 
 

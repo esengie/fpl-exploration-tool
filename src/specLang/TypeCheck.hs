@@ -29,7 +29,8 @@ makeLenses ''SymbolTable
 
 type TypeCheckM = StateT SymbolTable (Either TypeError)
 type TypeError = String
-type Context = [(MetaVar, Sort)]
+type MetaCtx = [(MetaVar, Sort)]
+type Ctx = [VarName]
 
 varsInit :: SymbolTable
 varsInit = SymbolTable Set.empty Set.empty Map.empty Map.empty Map.empty
@@ -167,7 +168,7 @@ checkSortByName depth name = do
         throwError $ "Sort " ++ name ++ " is not defined"
 
 -- checks and modifies one vars and checks for dups
-checkForallVars :: [(MetaVar, Sort)] -> TypeCheckM [(MetaVar, Sort)]
+checkForallVars :: MetaCtx -> TypeCheckM MetaCtx
 checkForallVars forall = do
   -- changes the sort to appropriate depth (if it's dependent at all)
   forall' <- mapM (\ (a , b) -> do
@@ -185,29 +186,76 @@ checkForallVars forall = do
   return forall' -- ++ vars'
 
 -- given meta vars (forall) and a judgement - typechecks it
-checkJudgem :: [(MetaVar, Sort)] -> Judgement -> TypeCheckM Judgement
-checkJudgem meta st@(Statement ctx tm ty) = do
-  meta' <- checkCtxVars meta
-  checkTerm meta' tm
-  checkTerm meta' ty
+-- first checks context
+-- then does all the different judgement specific ops
+checkJudgem :: MetaCtx -> Judgement -> TypeCheckM Judgement
+checkJudgem meta st = do
+  let ctx = jContext st
+  meta' <- checkCtx meta ctx
+  -- checkTerm meta' tm
+  -- checkTerm meta' ty
   return st
 
-checkCtxVars ::
+checkCtx :: MetaCtx -> [(VarName, Term)] -> TypeCheckM MetaCtx
+checkCtx mCtx ctx = checkCtxVarsHelper ctx mCtx
+  where checkCtxVarsHelper [] mCtx = return mCtx
+        checkCtxVarsHelper (x:xs) mCtx = do
+          -- check if it's in metas we have it fixed
+          -- ELSE it's a variable
+          -- checkCtxVar mCtx ( , varSort)
+          -- ctx' <- checkCtxVarsHelper xs (x:mCtx) -- more careful stuff here
+          return mCtx
 
--- Given a context (forall) and the sort of the term check it's correctness
--- Not all high level terms have to be sort checked (only statements)
-checkTerm :: [(MetaVar, Sort)] -> Term -> TypeCheckM ()
+checkCtxVar :: MetaCtx -> (MetaVar, Sort) -> TypeCheckM ()
+checkCtxVar ctx var = return ()
+
+-- Given a context + forall. (The sort of the term was checked)
+-- ??Not all high level terms have to be sort checked (only statements)
+checkTerm :: MetaCtx -> Ctx -> Term -> TypeCheckM Sort
 -- проверить все аппы на корректность сортов
--- все сабсты на корректность перем
--- передаем контекст внутрь
-checkTerm meta vns = undefined
+checkTerm meta ctx (Var name) = do
+      -- if name `elem` ctx
+      --   then return varSort -- is this bullshit?
+      --   else do
+    -- so we're a metavar: check we have all we need in ctx and return our sort
+    (mVar, sort) <- lift (lookupName (AST.mName . fst) name meta)
+    unless (subset (mContext mVar) ctx) $
+      throwError $ "Not all vars of a metavar are in context! Have:\n\t" ++
+        show ctx ++ "\nNeed:\n\t" ++ show (mContext mVar)
+    return sort
+checkTerm meta ctx (TermInCtx vars tm) = do -- we know it's a var, why would we care about its' term?
+  unless (allUnique vars ctx) $
+    throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
+  checkTerm meta (vars ++ ctx) tm
+
+checkTerm meta ctx (FunApp f mvars) = undefined
+checkTerm meta ctx (Subst v@(Var name) varName what) = do -- where must! be a metavar
+  -- we get: checking of compatibility of varName and v for free,
+  -- also that v has all its' context and that it's a MetaVar
+  checkTerm meta ctx (TermInCtx [varName] v)
+  -- check that the sort of what is tm
+  whatSort <- checkTerm meta ctx what
+  if whatSort /= varSort
+    then throwError "Can't subst non term sort!"
+    else return varSort
+checkTerm meta ctx Subst{} = throwError "May substitute only into metavars"
+
+-- old subst check
+-- -- we check that what is a tm
+-- (a, b) <- lift (lookupName (AST.mName . fst) name meta)
+-- -- we check that out x in T[x:=term] is in our metavars context
+-- unless (varName `elem` mContext a) $
+--   throwError "Variable substituted has to be in context"
+-- -- we also check that this var isn't in Judgements context
+-- when (varName `elem` ctx) $
+--   throwError "There shouldn't be naming conflicts during subst"
 
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 -- Reductions
-typeCheckReductions :: TypeCheckM ()
-typeCheckReductions = return ()
+typecheckReductions :: TypeCheckM ()
+typecheckReductions = return ()
 
 
 --------------------------------------------------------------------------------

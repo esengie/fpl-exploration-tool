@@ -25,6 +25,7 @@ Axioms :
     forall S : ty , x.T : ty , x.t : tm  -- х есть переменная (у метаперем есть сорт)
       x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
                 -- Gamma is everywhere, so we check if we have x in context not context equality
+
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty  -- не ругаться если больше параметров чем использованных
       |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2] -- !! tut x.T or T??
