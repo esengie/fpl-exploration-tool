@@ -43,7 +43,13 @@ data MetaVar = MetaVar {
 } deriving (Eq, Show)
 
 varSort :: Sort
-varSort = DepSort "tm" 0
+varSort = DepSort tmName 0
+
+tyName :: SortName
+tyName = "ty"
+
+tmName :: SortName
+tmName = "tm"
 
 data Axiom = Axiom {
   nameAx     :: Name,
@@ -93,8 +99,8 @@ isFunSym :: Term -> Bool
 isFunSym FunApp{} = True
 isFunSym _ = False
 
-allUnique :: Ord a => [a] -> [a] -> Bool
-allUnique a b = length a + length b == Set.size (Set.intersection (Set.fromList a) (Set.fromList b))
+allUnique :: Ord a => [a] -> Bool
+allUnique a = length a == Set.size (Set.fromList a)
 
 subset :: Ord a => [a] -> [a] -> Bool
 subset a b = 0 == Set.size (Set.difference (Set.fromList a) (Set.fromList b))

@@ -120,15 +120,24 @@ typecheckAxioms (ax : axs) = do
   when (isJust $ Map.lookup funSym (st^.TypeCheck.iSymAxiomMap)) $
     throwError $ "There is already an intro axiom for " ++ funSym
   modify $ over TypeCheck.iSymAxiomMap (Map.insert funSym (nameAx ax'))
-
   typecheckAxioms axs
 
 -- could be less monadic, but it's easier to throw errors this way
+-- statements are always funSym intros
 getAxFunSym :: Axiom -> TypeCheckM Name
-getAxFunSym (Axiom _ _ _ (Statement _ (FunApp name _) _)) = return name
+getAxFunSym (Axiom _ _ _ (Statement _ (FunApp name tms) _)) = do
+  checkTmsAreMetaVars tms
+  return name
+  where
+    checkTmsAreMetaVars :: [Term] -> TypeCheckM ()
+    checkTmsAreMetaVars [] = return ()
+    checkTmsAreMetaVars (Var _ : xs) = checkTmsAreMetaVars xs
+    checkTmsAreMetaVars (TermInCtx _ (Var _) : xs) = checkTmsAreMetaVars xs
+    checkTmsAreMetaVars _ = throwError $ "Not all terms in " ++ name ++ " are metavars"
+    
 getAxFunSym (Axiom _ _ _ Statement {}) =
   throwError "Implementation bug, should have FunApp here(?)"
-getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement here"
+getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement in conclusion"
 
 -- need to check forall var types and change them if need be
 -- check redefinition, fix forallvars, check types inside each judgement
@@ -146,10 +155,10 @@ checkAx ax@(Axiom name forall prem concl) = do
   --   throwError $ "Statements must define fun syms\n" ++ show st
 
   forall' <- checkForallVars forall
-  prem' <- mapM (checkJudgem forall') prem
-  concl' <- checkJudgem forall' concl
+  mapM_ (checkJudgem forall') prem
+  checkJudgem forall' concl
 
-  return (Axiom name forall' prem' concl')
+  return (Axiom name forall' prem concl)
 
 -- This function looks up a sortName in state
 -- ContextDepth is needed for forming the sort (not lookup)
@@ -174,29 +183,31 @@ checkForallVars forall = do
   forall' <- mapM (\ (a , b) -> do
     b' <- checkSortByName (length $ mContext a) (getSortName b)
     return (a , b') ) forall
-
   -- check for dups in captures and x.x situations
   mapM_ (\ (a , _) -> lift . checkForDups "Duplicates in captures" $ mName a : mContext a) forall'
   lift . checkForDups "Duplicates in metas" $ map (mName . fst) forall'
 
-  -- adding binders to list of variables - shouldn't do this
-  let vars = Set.toList . Set.fromList $ concatMap (mContext . fst) forall'  -------------------------------- usage of tm
-  let vars' = map (\x -> (MetaVar [] x , varSort)) vars
+  return forall'
 
-  return forall' -- ++ vars'
 
 -- given meta vars (forall) and a judgement - typechecks it
 -- first checks context
--- then does all the different judgement specific ops
-checkJudgem :: MetaCtx -> Judgement -> TypeCheckM Judgement
+-- !!!then does all the different judgement specific ops
+checkJudgem :: MetaCtx -> Judgement -> TypeCheckM ()
 checkJudgem meta st = do
   let ctx = jContext st
-  meta' <- checkCtx meta ctx
-  -- checkTerm meta' tm
-  -- checkTerm meta' ty
-  return st
+  vars <- checkCtx meta ctx
+  checkJSpecific meta vars st
 
-checkCtx :: MetaCtx -> [(VarName, Term)] -> TypeCheckM MetaCtx
+-- for now only Statements are checked (whatevs)
+checkJSpecific :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
+checkJSpecific meta ctx (Statement _ tm ty) = do
+  tmSort <- checkTerm meta ctx tm
+  tySort <- checkTerm meta ctx ty
+  when (getSortName tmSort /= tmName) $ throwError "Left of : is not a term"
+  when (getSortName tySort /= tyName) $ throwError "Right of : is not a type"
+
+checkCtx :: MetaCtx -> [(VarName, Term)] -> TypeCheckM Ctx
 checkCtx mCtx ctx = checkCtxVarsHelper ctx mCtx
   where checkCtxVarsHelper [] mCtx = return mCtx
         checkCtxVarsHelper (x:xs) mCtx = do
@@ -224,7 +235,7 @@ checkTerm meta ctx (Var name) = do
         show ctx ++ "\nNeed:\n\t" ++ show (mContext mVar)
     return sort
 checkTerm meta ctx (TermInCtx vars tm) = do -- we know it's a var, why would we care about its' term?
-  unless (allUnique vars ctx) $
+  unless (allUnique $ vars ++ ctx) $
     throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
   checkTerm meta (vars ++ ctx) tm
 
