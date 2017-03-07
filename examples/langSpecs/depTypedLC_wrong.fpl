@@ -16,9 +16,9 @@ Axioms :
 -- context - only vars
   -- !! how to do basic types? - we have tm, but how to have a substructure on that? like, say, bool?
 
-  KPi =
-    forall T1 : ty , x.T2 : ty
-      x : T1 |- T2 def |--- |- pi(T1, x.T2) def
+  --KPi =
+  --  forall T1 : ty , x.T2 : ty
+  --    x : T1 |- T2 : T3 |--- |- pi(T1 , x.T2) = pi(T1 , x.T2)
 
   TAbs =  -- !! what happens if I have a "-" in my axioms?
    ------  b : (tm , 1) -- мало, надо знать имена переменных в контексте!

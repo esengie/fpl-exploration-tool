@@ -40,7 +40,7 @@ typecheck lsp = do
     typecheckSorts lsp
     typecheckFunSyms (AST.funSyms lsp)
     typecheckAxioms (AST.axioms lsp)
-    typecheckReductions
+    --typecheckReductions
 
 runTypecheck :: Either String LangSpec -> Either TypeError SymbolTable
 runTypecheck langSp = do
@@ -228,7 +228,17 @@ checkTerm meta ctx (TermInCtx vars tm) = do -- we know it's a var, why would we 
     throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
   checkTerm meta (vars ++ ctx) tm
 
-checkTerm meta ctx (FunApp f mvars) = undefined
+checkTerm meta ctx (FunApp f args) = do
+  st <- get
+  case Map.lookup f (st^.TypeCheck.funSyms) of
+    Nothing -> throwError $ "Undefined funSym" ++ f
+    Just (FunSym _ needS res) -> do
+      haveS <- mapM (checkTerm meta ctx) args
+      unless (all (uncurry (==)) (zip needS haveS)) $
+        throwError $ "Arg sorts don't match, need:\n\t" ++ show needS ++
+          "\nbut have:\n\t" ++ show haveS
+      return res
+
 checkTerm meta ctx (Subst v@(Var name) varName what) = do -- where must! be a metavar
   -- we get: checking of compatibility of varName and v for free,
   -- also that v has all its' context and that it's a MetaVar
@@ -265,16 +275,16 @@ typecheckReductions = return ()
 
 -- State = Set DepVars, Set Vars, Map funcs,
 
-main' :: FilePath -> IO ()
-main' file = do
+mainCheck :: FilePath -> IO ()
+mainCheck file = do
   str <- readFile file
   let lang = parseLang (show file) str
   putStrLn $ case runTypecheck lang of
     Left err -> "hmm " ++ show err
     x -> show x
 
-mainP :: FilePath -> IO ()
-mainP file = do
+mainParse :: FilePath -> IO ()
+mainParse file = do
   str <- readFile file
   let k = parseLang (show file) str
   case k of
