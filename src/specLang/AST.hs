@@ -10,6 +10,7 @@ data LangSpec = LangSpec {
 , simpleSortNames :: [SortName]
 , funSyms         :: [FunctionalSymbol]
 , axioms          :: [Axiom]
+, reductions      :: [Reduction]
 } deriving (Eq, Show)
 
 -- instance Show LangSpec where

@@ -21,6 +21,7 @@ data SymbolTable = SymbolTable {
 , _simpleSorts   :: Set.Set SortName
 , _funSyms       :: Map.Map Name FunctionalSymbol
 , _axioms        :: Map.Map Name Axiom
+, _reductions    :: Map.Map Name Reduction
 , _iSymAxiomMap  :: Map.Map Name Name -- intro axioms of funSyms
 -- , _reductions    :: Map.Map Name
 } deriving (Eq, Show)
@@ -33,7 +34,7 @@ type MetaCtx = [(MetaVar, Sort)]
 type Ctx = [VarName]
 
 varsInit :: SymbolTable
-varsInit = SymbolTable Set.empty Set.empty Map.empty Map.empty Map.empty
+varsInit = SymbolTable Set.empty Set.empty Map.empty Map.empty Map.empty Map.empty
 
 typecheck :: LangSpec -> TypeCheckM ()
 typecheck lsp = do

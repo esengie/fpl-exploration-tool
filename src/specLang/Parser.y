@@ -72,8 +72,13 @@ Reductions      :   Reduction                                 { [$1] }
 
 Axiom           :   ident '=' '\t' Forall '\t'
                       Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
+                |   ident '=' '\t' Forall '\t'
+                      '|---' JudgementNoEq '/t' '/t'          { Axiom $1 $4 [] $7 }
+
 Reduction       :   ident '=' '\t' Forall '\t'
-                      Premise '|---' JudgeReduct '/t' '/t'     { Reduction $1 $4 $6 $8 }
+                      Premise '|---' JudgeReduct '/t' '/t'    { Reduction $1 $4 $6 $8 }
+                |   ident '=' '\t' Forall '\t'
+                      '|---' JudgeReduct '/t' '/t'            { Reduction $1 $4 [] $7 }
 
 Forall          :   V ForallVars                              { $2 }
 ForallVars      :   ForallVar                                 { [$1] }
