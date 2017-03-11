@@ -41,7 +41,7 @@ tokens :-
   "def"                                 { lex' TDef         }
   $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
   "="                                   { lex' TEq          }
-  "=>"                                  { lex' TReduct      }
+  "=>"                                  { lex' TReduce      }
   ":"                                   { lex' TColon       }
   "|-"                                  { lex' TTurnstile   }
   "|--" "-"*                            { lex' TJudgement   }
