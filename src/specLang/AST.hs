@@ -58,10 +58,13 @@ data Axiom = Axiom {
   conclusion :: Judgement
 } deriving (Eq, Show)
 
-lookupName :: (a -> Name) -> Name -> [a] -> Either String a
+type DefaultErr = Either String
+
+lookupName :: (a -> Name) -> Name -> [a] -> DefaultErr a
 lookupName f = lookupName' (\x y -> f x == y)
 
-lookupName' :: (a -> Name -> Bool) -> Name -> [a] -> Either String a
+-- f : tm + name = equal?
+lookupName' :: (a -> Name -> Bool) -> Name -> [a] -> DefaultErr a
 lookupName' idf name (x : xs) | idf x name = return x
   | otherwise = lookupName' idf name xs
 lookupName' _ name _ = Left $ "Name " ++ name ++ " not found!"
@@ -98,6 +101,11 @@ data Term = Var VarName              -- xyz
 isFunSym :: Term -> Bool
 isFunSym FunApp{} = True
 isFunSym _ = False
+
+isVar :: Term -> Bool
+isVar Var{} = True
+isVar (TermInCtx _ Var{}) = True
+isVar _ = False
 
 allUnique :: Ord a => [a] -> Bool
 allUnique a = length a == Set.size (Set.fromList a)

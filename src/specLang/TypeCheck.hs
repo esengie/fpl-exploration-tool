@@ -126,15 +126,15 @@ typecheckAxioms (ax : axs) = do
 -- statements are always funSym intros
 getAxFunSym :: Axiom -> TypeCheckM Name
 getAxFunSym (Axiom _ _ _ (Statement _ (FunApp name tms) _)) = do
-  checkTmsAreMetaVars tms
+  checkArgsAreMetaVars tms
   return name
   where
-    checkTmsAreMetaVars :: [Term] -> TypeCheckM ()
-    checkTmsAreMetaVars [] = return ()
-    checkTmsAreMetaVars (Var _ : xs) = checkTmsAreMetaVars xs
-    checkTmsAreMetaVars (TermInCtx _ (Var _) : xs) = checkTmsAreMetaVars xs
-    checkTmsAreMetaVars _ = throwError $ "Not all terms in " ++ name ++ " are metavars"
-    
+    checkArgsAreMetaVars :: [Term] -> TypeCheckM ()
+    checkArgsAreMetaVars [] = return ()
+    checkArgsAreMetaVars (Var _ : xs) = checkArgsAreMetaVars xs
+    checkArgsAreMetaVars (TermInCtx _ (Var _) : xs) = checkArgsAreMetaVars xs
+    checkArgsAreMetaVars _ = throwError $ "Not all terms in " ++ name ++ " are metavars"
+
 getAxFunSym (Axiom _ _ _ Statement {}) =
   throwError "Implementation bug, should have FunApp here(?)"
 getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement in conclusion"
@@ -199,26 +199,50 @@ checkJudgem meta st = do
   vars <- checkCtx meta ctx
   checkJSpecific meta vars st
 
--- for now only Statements are checked (whatevs)
+-- for now only Statements are checked
+-- Statement - check "tm : ty"
 checkJSpecific :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
 checkJSpecific meta ctx (Statement _ tm ty) = do
   tmSort <- checkTerm meta ctx tm
   tySort <- checkTerm meta ctx ty
+  checkTmSort tmSort
+  checkTySort tySort
+
+--------------------------------------------------------------------
+-- given a sort checks if it's equal to universal tm sort
+checkTmSort :: Sort -> TypeCheckM ()
+checkTmSort tmSort =
   when (getSortName tmSort /= tmName) $ throwError "Left of : is not a term"
-  when (getSortName tySort /= tyName) $ throwError "Right of : is not a type"
 
+checkTySort :: Sort -> TypeCheckM ()
+checkTySort tySort =
+    when (getSortName tySort /= tyName) $ throwError "Right of : is not a type"
+--------------------------------------------------------------------
 checkCtx :: MetaCtx -> [(VarName, Term)] -> TypeCheckM Ctx
-checkCtx mCtx ctx = checkCtxVarsHelper ctx mCtx
-  where checkCtxVarsHelper [] mCtx = return mCtx
-        checkCtxVarsHelper (x:xs) mCtx = do
-          -- check if it's in metas we have it fixed
-          -- ELSE it's a variable
-          -- checkCtxVar mCtx ( , varSort)
-          -- ctx' <- checkCtxVarsHelper xs (x:mCtx) -- more careful stuff here
-          return mCtx
+checkCtx mCtx = checkCtxVarsHelper mCtx []
+  where
+    checkCtxVarsHelper :: MetaCtx -> Ctx -> [(VarName, Term)] -> TypeCheckM Ctx
+    checkCtxVarsHelper _ ctx [] = return ctx
+    checkCtxVarsHelper mCtx ctx ((vname, tm):xs) = do
+      tySort <- checkTerm mCtx ctx tm
+      checkTySort tySort
 
-checkCtxVar :: MetaCtx -> (MetaVar, Sort) -> TypeCheckM ()
-checkCtxVar ctx var = return ()
+      -- check if it's in metas we have it fixed
+      -- !!(this is here and not just
+      --         case on "checkTerm mCtx ctx (Var vname)" -- same lookup is inside there!
+      --         cause I forgot how destructure it)
+      case lookupName (AST.mName . fst) vname mCtx of
+        Right _ -> do
+          tmSort <- checkTerm mCtx ctx (Var vname)
+          checkTmSort tmSort
+          checkCtxVarsHelper mCtx ctx xs
+      -- ELSE it's a variable
+        Left _ -> do
+          lift $
+            lookupName' (\x name -> name `elem` AST.mContext (fst x))
+                        vname
+                        mCtx
+          checkCtxVarsHelper mCtx (vname : ctx) xs
 
 -- Given a context + forall. (The sort of the term was checked)
 -- ??Not all high level terms have to be sort checked (only statements)
@@ -234,7 +258,7 @@ checkTerm meta ctx (Var name) = do
       throwError $ "Not all vars of a metavar are in context! Have:\n\t" ++
         show ctx ++ "\nNeed:\n\t" ++ show (mContext mVar)
     return sort
-checkTerm meta ctx (TermInCtx vars tm) = do -- we know it's a var, why would we care about its' term?
+checkTerm meta ctx (TermInCtx vars tm) = do
   unless (allUnique $ vars ++ ctx) $
     throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
   checkTerm meta (vars ++ ctx) tm
