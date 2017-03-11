@@ -205,18 +205,25 @@ checkJSpecific :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
 checkJSpecific meta ctx (Statement _ tm ty) = do
   tmSort <- checkTerm meta ctx tm
   tySort <- checkTerm meta ctx ty
-  checkTmSort tmSort
-  checkTySort tySort
+  checkTmSort tmSort tm
+  checkTySort tySort ty
 
 --------------------------------------------------------------------
 -- given a sort checks if it's equal to universal tm sort
-checkTmSort :: Sort -> TypeCheckM ()
-checkTmSort tmSort =
-  when (getSortName tmSort /= tmName) $ throwError "Left of : is not a term"
+checkTmSort :: Sort -> Term -> TypeCheckM ()
+checkTmSort tmSort tm = do
+  let sName = getSortName tmSort
+  when (sName /= tmName) $
+    throwError $ "Left of : is not a term, but " ++ show sName ++
+      "\n in " ++ show tm
 
-checkTySort :: Sort -> TypeCheckM ()
-checkTySort tySort =
-    when (getSortName tySort /= tyName) $ throwError "Right of : is not a type"
+checkTySort :: Sort -> Term -> TypeCheckM ()
+checkTySort tySort tm = do
+  let sName = getSortName tySort
+  when (sName /= tyName) $
+    throwError $ "Right of : is not a type, but " ++ show sName ++
+      "\n in " ++ show tm
+
 --------------------------------------------------------------------
 checkCtx :: MetaCtx -> [(VarName, Term)] -> TypeCheckM Ctx
 checkCtx mCtx = checkCtxVarsHelper mCtx []
@@ -225,7 +232,7 @@ checkCtx mCtx = checkCtxVarsHelper mCtx []
     checkCtxVarsHelper _ ctx [] = return ctx
     checkCtxVarsHelper mCtx ctx ((vname, tm):xs) = do
       tySort <- checkTerm mCtx ctx tm
-      checkTySort tySort
+      checkTySort tySort tm
 
       -- check if it's in metas we have it fixed
       -- !!(this is here and not just
@@ -234,7 +241,7 @@ checkCtx mCtx = checkCtxVarsHelper mCtx []
       case lookupName (AST.mName . fst) vname mCtx of
         Right _ -> do
           tmSort <- checkTerm mCtx ctx (Var vname)
-          checkTmSort tmSort
+          checkTmSort tmSort (Var vname)
           checkCtxVarsHelper mCtx ctx xs
       -- ELSE it's a variable
         Left _ -> do
@@ -277,12 +284,12 @@ checkTerm meta ctx (FunApp f args) = do
 checkTerm meta ctx (Subst v@(Var name) varName what) = do -- where must! be a metavar
   -- we get: checking of compatibility of varName and v for free,
   -- also that v has all its' context and that it's a MetaVar
-  checkTerm meta ctx (TermInCtx [varName] v)
+  sorte <- checkTerm meta ctx (TermInCtx [varName] v)
   -- check that the sort of what is tm
   whatSort <- checkTerm meta ctx what
   if whatSort /= varSort
     then throwError "Can't subst non term sort!"
-    else return varSort
+    else lift (lowerCtx sorte)
 checkTerm meta ctx Subst{} = throwError "May substitute only into metavars"
 
 -- old subst check
@@ -315,7 +322,7 @@ mainCheck file = do
   str <- readFile file
   let lang = parseLang (show file) str
   putStrLn $ case runTypecheck lang of
-    Left err -> "hmm " ++ show err
+    Left err -> "hmm " ++ err
     x -> show x
 
 mainParse :: FilePath -> IO ()

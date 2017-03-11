@@ -19,13 +19,19 @@ type SortName = String
 type VarName = String
 type Name = String
 type ContextDepth = Int
+type DefaultErr = Either String
 
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq, Show)
 
 getSortName :: Sort -> SortName
-getSortName (DepSort n _) = n
-getSortName (SimpleSort n) = n
+getSortName (DepSort nm _) = nm
+getSortName (SimpleSort nm) = nm
+
+lowerCtx :: Sort -> DefaultErr Sort
+lowerCtx (SimpleSort _) = Left "Simple sorts can't have context"
+lowerCtx (DepSort nm num) | num > 0 = return (DepSort nm $ num - 1)
+                          | otherwise = Left "Context is empty already"
 
 isDepSort :: Sort -> Bool
 isDepSort (DepSort _ _) = True
@@ -57,8 +63,6 @@ data Axiom = Axiom {
   premise    :: [Judgement],
   conclusion :: Judgement
 } deriving (Eq, Show)
-
-type DefaultErr = Either String
 
 lookupName :: (a -> Name) -> Name -> [a] -> DefaultErr a
 lookupName f = lookupName' (\x y -> f x == y)
