@@ -64,6 +64,13 @@ data Axiom = Axiom {
   conclusion :: Judgement
 } deriving (Eq, Show)
 
+data Reduction = Reduction {
+  rName     :: Name,
+  rForallVars :: [(MetaVar, Sort)],
+  rPremise    :: [Judgement],
+  rConclusion :: Judgement
+} deriving (Eq, Show)
+
 lookupName :: (a -> Name) -> Name -> [a] -> DefaultErr a
 lookupName f = lookupName' (\x y -> f x == y)
 
@@ -80,16 +87,20 @@ data Judgement =
   Statement {
   jContext   :: [(VarName, Term)] -- want Variable actually
 , jTerm :: Term
-, jType :: Term    -- (Term, Term) or (Term, Term, Term)
+, jType :: Maybe Term    -- def as maybe
 } |
   Equality {
   jContext   :: [(VarName, Term)]
 , eqL  :: Term
 , eqR  :: Term
-, jType :: Term -- equality t1 = t2 : t3
+, jType :: Maybe Term -- equality t1 = t2 : t3
+} |
+  Reduct {
+  jContext   :: [(VarName, Term)]
+, redL  :: Term
+, redR  :: Term
+, jType :: Maybe Term -- equality t1 = t2 : t3
 } deriving (Eq, Show)
--- def as maybe
---
 
 isEqJudgement :: Judgement -> Bool
 isEqJudgement Equality{} = True

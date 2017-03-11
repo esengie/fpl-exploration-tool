@@ -36,9 +36,12 @@ tokens :-
   "SimpleSorts"                         { lex' TSimpleS     }
   "FunctionalSymbols"                   { lex' TFunSyms     }
   "Axioms"                              { lex' TAxioms      }
+  "Reductions"                          { lex' TReds        }
   "forall"                              { lex' TForall      }
+  "def"                                 { lex' TDef         }
   $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
   "="                                   { lex' TEq          }
+  "=>"                                  { lex' TReduct      }
   ":"                                   { lex' TColon       }
   "|-"                                  { lex' TTurnstile   }
   "|--" "-"*                            { lex' TJudgement   }
@@ -74,11 +77,14 @@ data TokenClass
   | TSimpleS
   | TFunSyms
   | TAxioms
+  | TReds
   | TForall
+  | TDef
   | TIdent String
   | TEq
   | TColon
   | TTurnstile
+  | TReduce
   | TJudgement
   | TComma
   | TDot
@@ -197,11 +203,14 @@ unLex TDepS = "!DepS"
 unLex TSimpleS = "!SimpleS"
 unLex TFunSyms = "!FunsSyms"
 unLex TAxioms = "!Axioms"
+unLex TReds   = "!Reductions"
 unLex TForall = "FORALL"
+unLex TDef = "def"
 unLex (TIdent s) = s
 unLex TEq = "="
 unLex TColon = ":"
 unLex TTurnstile = "|-"
+unLex TReduce = "=>"
 unLex TJudgement = "|---"
 unLex TComma = ","
 unLex TDot = "."
