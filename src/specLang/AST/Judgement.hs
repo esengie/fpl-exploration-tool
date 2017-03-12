@@ -1,5 +1,7 @@
 module AST.Judgement(
-  Judgement(..)
+  Judgement(..),
+  isEqJudgement,
+  isRedJudgement
   )
   where
 

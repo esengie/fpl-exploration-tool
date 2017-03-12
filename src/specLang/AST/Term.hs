@@ -15,6 +15,7 @@ module AST.Term(
   lowerCtx,
   isDepSort,
   lookupName,
+  lookupName',
   isFunSym,
   isVar,
   allUnique,
