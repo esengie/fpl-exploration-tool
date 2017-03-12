@@ -41,7 +41,7 @@ typecheck lsp = do
     typecheckSorts lsp
     typecheckFunSyms (AST.funSyms lsp)
     typecheckAxioms (AST.axioms lsp)
-    --typecheckReductions
+    typecheckReductions (AST.reductions lsp)
 
 runTypecheck :: Either String LangSpec -> Either TypeError SymbolTable
 runTypecheck langSp = do
@@ -346,8 +346,29 @@ checkTerm meta ctx Subst{} = throwError "May substitute only into metavars"
 
 --------------------------------------------------------------------------------
 -- Reductions
-typecheckReductions :: TypeCheckM ()
-typecheckReductions = return ()
+typecheckReductions :: [Reduction] -> TypeCheckM ()
+typecheckReductions [] = return ()
+typecheckReductions (red : reds) = do
+  red' <- checkRed red
+  modify $ over TypeCheck.reductions (Map.insert (rName red') red')
+
+  typecheckReductions reds
+
+checkRed :: Reduction -> TypeCheckM Reduction
+checkRed red@(Reduction name forall prem concl) = do
+  st <- get
+
+  when (isJust $ Map.lookup name (st^.TypeCheck.reductions)) $
+    throwError $ "Reduction redefinition: " ++ name
+
+  unless (isRedJudgement concl) $
+    throwError $ "Must be a reduction: " ++ name
+
+  forall' <- checkForallVars forall
+  mapM_ (checkJudgem forall') prem
+  checkJudgem forall' concl
+
+  return (Reduction name forall' prem concl)
 
 
 --------------------------------------------------------------------------------

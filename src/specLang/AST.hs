@@ -107,6 +107,10 @@ isEqJudgement :: Judgement -> Bool
 isEqJudgement Equality{} = True
 isEqJudgement _ = False
 
+isRedJudgement :: Judgement -> Bool
+isRedJudgement Reduct{} = True
+isRedJudgement _ = False
+
 -- was Variable | FunApp FunSym [Term]
 data Term = Var VarName              -- xyz
           | TermInCtx [VarName] Term -- (x y).asd
