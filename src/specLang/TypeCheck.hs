@@ -220,7 +220,7 @@ checkJSpecific meta ctx red@(Reduct _ l@FunApp{} r ty) = do
   __checkEqAndRed meta ctx red
   -- reduct specific stuff:
   -- all metas right in left
-  unless (getMetas l `Set.isSubsetOf` getMetas r) $ throwError $
+  unless (getMetas r `Set.isSubsetOf` getMetas l) $ throwError $
     "Metas to the right of reduction should be present on the left" ++ show red
   where
     getMetas :: Term -> Set.Set SortName
