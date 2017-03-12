@@ -15,7 +15,15 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src/specLang
-  exposed-modules:     Lexer
+                     , src/specLang/parsLex
+  exposed-modules:     SortCheck
+  other-modules:       AST.Axiom
+                     , AST.Term
+                     , AST.Judgement
+                     , AST.Reduction
+                     , Parser
+                     , Lexer
+                     --, SCheck.
   build-depends:       base >= 4.7 && < 5
                      , array == 0.5.1.*
                      , mtl   == 2.2.*

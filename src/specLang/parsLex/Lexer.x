@@ -2,8 +2,8 @@
 -- Lexer reads tokens, add indents where needed and removes all (!) the empty newlines -- maybe this is bad,
 -- but otherwise <UNTAB> <UNTAB> <TAB> <TAB> is breaking my parser. (Should've read up on happy and alex more, but eh)
 
-module Lexer
-  ( Token(..)
+module Lexer(
+    Token(..)
   , AlexPosn(..)
   , TokenClass(..)
   , unLex
@@ -11,7 +11,7 @@ module Lexer
   , runAlex'
   , alexMonadScan'
   , alexError'
-  , maien
+  , mainLex
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever, when )
@@ -193,8 +193,8 @@ printHelper (Right r) = map (unLex . detok) r
 tokenize::String-> Either String [Token]
 tokenize s = runAlex' "sad" s readtoks
 
-maien :: String -> [String]
-maien input = printHelper (tokenize input)
+mainLex :: String -> [String]
+mainLex input = printHelper (tokenize input)
 
 -- For nice parser error messages.
 unLex :: TokenClass -> String

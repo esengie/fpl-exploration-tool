@@ -2,6 +2,8 @@
 module Parser(parseLang) where
 
 import AST
+import AST.Axiom as Ax
+import AST.Reduction as Red
 import Lexer
 
 }
@@ -142,5 +144,13 @@ happyError (Token p t) =
 
 parseLang :: FilePath -> String -> Either String LangSpec
 parseLang fp code = runAlex' fp code parse
+
+mainParse :: FilePath -> IO ()
+mainParse file = do
+  str <- readFile file
+  let k = parseLang (show file) str
+  case k of
+    Right x -> putStr $ show x
+    Left x -> putStr x
 
 }

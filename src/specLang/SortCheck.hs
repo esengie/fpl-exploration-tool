@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module TypeCheck
+module SortCheck
   where
 
 import Control.Monad.Trans.State.Lazy
@@ -386,13 +386,6 @@ mainCheck file = do
     Left err -> "hmm " ++ err
     x -> show x
 
-mainParse :: FilePath -> IO ()
-mainParse file = do
-  str <- readFile file
-  let k = parseLang (show file) str
-  case k of
-    Right x -> putStr $ show x
-    Left x -> putStr x
 
 
 
