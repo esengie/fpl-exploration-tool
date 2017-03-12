@@ -92,14 +92,14 @@ data Judgement =
 } |
   Equality {
   jContext   :: [(VarName, Term)]
-, eqL  :: Term
-, eqR  :: Term
+, jLeft  :: Term
+, jRight  :: Term
 , jType :: Maybe Term -- equality t1 = t2 : t3
 } |
   Reduct {
   jContext   :: [(VarName, Term)]
-, redL  :: Term
-, redR  :: Term
+, jLeft  :: Term
+, jRight  :: Term
 , jType :: Maybe Term -- equality t1 = t2 : t3
 } deriving (Eq, Show)
 

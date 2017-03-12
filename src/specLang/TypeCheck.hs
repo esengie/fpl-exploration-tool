@@ -116,6 +116,7 @@ typecheckAxioms (ax : axs) = do
   modify $ over TypeCheck.axioms (Map.insert (nameAx ax') ax')
 
   -- check there is only one funSym intro axiom
+  -- can't have equalities in the conclusion
   funSym <- getAxFunSym ax'
   st <- get
   when (isJust $ Map.lookup funSym (st^.TypeCheck.iSymAxiomMap)) $
@@ -203,27 +204,48 @@ checkJudgem meta st = do
 -- for now only Statements are checked
 -- Statement - check "tm : ty"
 checkJSpecific :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
-checkJSpecific meta ctx (Statement _ tm ty) = do
+checkJSpecific meta ctx (Statement _ tm (Just ty)) = do
   tmSort <- checkTerm meta ctx tm
   tySort <- checkTerm meta ctx ty
   checkTmSort tmSort tm
   checkTySort tySort ty
+checkJSpecific meta ctx (Statement _ tm Nothing) = do
+  checkTerm meta ctx tm
+  return ()
+checkJSpecific meta ctx a@Equality{} = __checkEqAndRed meta ctx a
+checkJSpecific meta ctx r@Reduct{} = do
+  -- reduct specific stuff
+  __checkEqAndRed meta ctx r
+
+__checkEqAndRed :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
+__checkEqAndRed meta ctx judg = do
+  lSort <- checkTerm meta ctx (jLeft judg)
+  rSort <- checkTerm meta ctx (jRight judg)
+  checkEqSorts (getSortName lSort) (getSortName rSort) $
+    "Sorts are unequal in" ++ show judg
+  case jType judg of
+    Nothing -> return ()
+    Just ty -> do
+      checkTmSort lSort (jLeft judg)
+      tySort <- checkTerm meta ctx ty
+      checkTySort tySort ty
 
 --------------------------------------------------------------------
 -- given a sort checks if it's equal to universal tm sort
 checkTmSort :: Sort -> Term -> TypeCheckM ()
-checkTmSort tmSort tm = do
-  let sName = getSortName tmSort
-  when (sName /= tmName) $
-    throwError $ "Left of : is not a term, but " ++ show sName ++
-      "\n in " ++ show tm
+checkTmSort tmSort tm =
+  let sName = getSortName tmSort in
+  checkEqSorts sName tmName $ "Left of : is not a term, but " ++ show sName ++
+                               "\n in " ++ show tm
 
 checkTySort :: Sort -> Term -> TypeCheckM ()
-checkTySort tySort tm = do
-  let sName = getSortName tySort
-  when (sName /= tyName) $
-    throwError $ "Right of : is not a type, but " ++ show sName ++
-      "\n in " ++ show tm
+checkTySort tySort tm =
+  let sName = getSortName tySort in
+  checkEqSorts sName tyName $ "Right of : is not a type, but " ++ show sName ++
+                                "\n in " ++ show tm
+
+checkEqSorts :: SortName -> SortName -> String -> TypeCheckM ()
+checkEqSorts l r msg =  when (l /= r) $ throwError msg
 
 --------------------------------------------------------------------
 checkCtx :: MetaCtx -> [(VarName, Term)] -> TypeCheckM Ctx
