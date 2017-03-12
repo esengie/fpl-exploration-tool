@@ -201,8 +201,10 @@ checkJudgem meta st = do
   vars <- checkCtx meta ctx
   checkJSpecific meta vars st
 
--- for now only Statements are checked
+-- Specific stuff for judgements
 -- Statement - check "tm : ty"
+-- Equality & reduction - check sorts are same in = & =>
+-- Reduction - check right has subset of metas & left starts with funsym
 checkJSpecific :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
 checkJSpecific meta ctx (Statement _ tm (Just ty)) = do
   tmSort <- checkTerm meta ctx tm
@@ -212,10 +214,25 @@ checkJSpecific meta ctx (Statement _ tm (Just ty)) = do
 checkJSpecific meta ctx (Statement _ tm Nothing) = do
   checkTerm meta ctx tm
   return ()
-checkJSpecific meta ctx a@Equality{} = __checkEqAndRed meta ctx a
-checkJSpecific meta ctx r@Reduct{} = do
-  -- reduct specific stuff
-  __checkEqAndRed meta ctx r
+checkJSpecific meta ctx ax@Equality{} = __checkEqAndRed meta ctx ax
+-- left starts from funsym
+checkJSpecific meta ctx red@(Reduct _ l@FunApp{} r ty) = do
+  __checkEqAndRed meta ctx red
+  -- reduct specific stuff:
+  -- all metas right in left
+  unless (getMetas l `Set.isSubsetOf` getMetas r) $ throwError $
+    "Metas to the right of reduction should be present on the left" ++ show red
+  where
+    getMetas :: Term -> Set.Set SortName
+    getMetas = getMetas' Set.empty
+      where
+        getMetas' st (Var v) = Set.insert v st
+        getMetas' st (TermInCtx _ tm) = getMetas' st tm
+        getMetas' st (Subst to _ what) = Set.union (getMetas' st to) (getMetas' st what)
+        getMetas' st (FunApp _ lst) = foldr (Set.union . getMetas' st) Set.empty lst
+
+checkJSpecific _ _ red = throwError $ "Reducts should start from a funSym " ++ show red
+
 
 __checkEqAndRed :: MetaCtx -> Ctx -> Judgement -> TypeCheckM ()
 __checkEqAndRed meta ctx judg = do
