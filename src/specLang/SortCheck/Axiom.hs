@@ -22,8 +22,15 @@ import SortCheck.Forall
 -- Axioms
 
 sortCheckAxioms :: [Axiom] -> SortCheckM ()
-sortCheckAxioms [] = return ()
-sortCheckAxioms (ax : axs) = do
+sortCheckAxioms axs = do
+  sortCheckAxioms' axs
+  st <- get
+  when (Map.size (st^.iSymAxiomMap) < Map.size (st^.SymbolTable.funSyms)) $
+    throwError "Not all funSyms have intro axioms"
+
+sortCheckAxioms' :: [Axiom] -> SortCheckM ()
+sortCheckAxioms' [] = return ()
+sortCheckAxioms' (ax : axs) = do
   ax' <- checkAx ax
   modify $ over SymbolTable.axioms (Map.insert (name ax') ax')
 
@@ -34,7 +41,7 @@ sortCheckAxioms (ax : axs) = do
   when (isJust $ Map.lookup funSym (st^.iSymAxiomMap)) $
     throwError $ "There is already an intro axiom for " ++ funSym
   modify $ over iSymAxiomMap (Map.insert funSym (name ax'))
-  sortCheckAxioms axs
+  sortCheckAxioms' axs
 
 -- could be less monadic, but it's easier to throw errors this way
 -- statements are always funSym intros
