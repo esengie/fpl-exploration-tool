@@ -23,6 +23,7 @@ module AST.Term(
 ) where
 
 import qualified Data.Set as Set
+import Data.List(intercalate)
 
 type SortName = String
 type VarName = String
@@ -31,7 +32,14 @@ type ContextDepth = Int
 type DefaultErr = Either String
 
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
-  deriving (Eq, Show)
+  deriving (Eq)
+
+bracket :: String -> String
+bracket s = "(" ++ s ++ ")"
+
+instance Show Sort where
+  show (DepSort nm dp) = bracket $ nm ++ "," ++ show dp
+  show (SimpleSort nm) = nm
 
 varSort :: Sort
 varSort = DepSort tmName 0
@@ -58,18 +66,36 @@ data FunctionalSymbol = FunSym {
   nameFun   :: Name
 , arguments :: [Sort]
 , result    :: Sort       --- hack in the parser that gets solved in the checking stage
-} deriving (Eq, Show)
+} deriving (Eq)
+
+instance Show FunctionalSymbol where
+  show (FunSym nm args res) =
+    nm ++ ": " ++ intercalate "*" (map show args) ++ "->" ++ show res
 
 data MetaVar = MetaVar {
   mContext  :: [VarName]
 , mName     :: VarName
-} deriving (Eq, Show)
+} deriving (Eq)
+
+showCtxVar :: [Name] -> String -> String
+showCtxVar [] y = y
+showCtxVar [x] y = x ++ "." ++ y
+showCtxVar args y = bracket (unwords args) ++ "." ++ y
+
+instance Show MetaVar where
+  show (MetaVar x y) = showCtxVar x y
 
 data Term = Var VarName              -- xyz
           | TermInCtx [VarName] Term -- (x y).asd
           | FunApp Name [Term]
           | Subst Term VarName Term
-    deriving (Eq, Show)
+    deriving (Eq)
+
+instance Show Term where
+  show (Var nm) = nm
+  show (TermInCtx x y) = showCtxVar x (show y)
+  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map show args))
+  show (Subst into vn what) = show into ++ "[" ++ vn ++ ":= " ++ show what ++ "]"
 
 isFunSym :: Term -> Bool
 isFunSym FunApp{} = True
