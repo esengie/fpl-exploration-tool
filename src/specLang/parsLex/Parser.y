@@ -49,9 +49,9 @@ LangSpec        :   DepSorts SimpleSorts FunSyms AxiomsAll ReductionsAll  { Lang
                 |   SimpleSorts DepSorts FunSyms AxiomsAll ReductionsAll  { LangSpec $2 $1 $3 $4 $5 }
 
 SimpleSorts     :   simpleSortBeg ':' '\t' CommaSepNames '/t' { $4 }
-                |   simpleSortBeg ':' '\t' '/t'               { [] }
+                |   simpleSortBeg ':' '\t'               '/t' { [] }
 DepSorts        :   depSortBeg ':' '\t' CommaSepNames '/t'    { $4 }
-                |   depSortBeg ':' '\t' '/t'                  { [] }
+                |   depSortBeg ':' '\t'               '/t'    { [] }
 CommaSepNames   :   ident                                     { [$1] }
                 |   ident ',' CommaSepNames                   { $1 : $3 }
 
@@ -66,7 +66,10 @@ SortLeft        :   ident                                     { SimpleSort $1 }
                 |   '(' ident ',' int ')'                     { DepSort $2 $4 }
 
 AxiomsAll       :   axBeg ':' '\t' Axioms '/t'                { $4 }
+                |   axBeg ':' '\t'        '/t'                { [] }
 ReductionsAll   :   redBeg ':' '\t' Reductions '/t'           { $4 }
+                |   redBeg ':' '\t'            '/t'           { [] }
+
 Axioms          :   Axiom                                     { [$1] }
                 |   Axiom Axioms                              { $1 : $2 }
 Reductions      :   Reduction                                 { [$1] }
