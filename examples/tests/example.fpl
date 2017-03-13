@@ -1,60 +1,48 @@
--- <- Коммент, + индентация имеет значение
+-- <- comment, indent is meaningful
 
-DependentSorts : -- meaning context dependent(!)
-  tm, tn -- all depsorts depend on tm, (tm always is!!!!) tm always dependent
+DependentSorts : -- meaning context dependent
+  tm, tn -- all depsorts depend on tm, (tm must always exist) tm always dependent
 
 SimpleSorts :
-  ty   -- ty always, mb dep mb indep
+  ty   -- ty should always exist, mb dep mb indep
 
 FunctionalSymbols :
   arr : ty * ty -> ty
   cart : (tn , 0) * (tn , 0) -> tn
-  pi : (tn , 0) * (tn , 1) -> tn  -- B : A -> U, but we have B(x) - so we need x in our context
+  pi : (tn , 0) * (tn , 1) -> tn  -- B : A -> U, we have B(x) - so we need x in our context
   sigma : (tn , 0) * (tn , 1) -> tn
-  lam : ty * (tm , 1) -> tm  -- говорим что связывают 1 перем (\x -> ...) - термам нужен контекст (от него зависимость)
-  app : (tm , 0) * (tm , 0) -> tm -- tm справа ноль, а слева всегда больше ноля? --------------------------
+  lam : ty * (tm , 1) -> tm
+  app : (tm , 0) * (tm , 0) -> tm
 
 Axioms :
--- (tm , 0) -- означает \x -> x; (tm , 1) \x -> y, var always term
+-- (tm , 0) -- means \x -> x; (tm , 1) \x -> y, var always term
 
--- x.B -- func from tm to ty
--- (ty , 2) : tm -> tm -> ty
--- context - only vars
   AxiomOne =
-   ------  b : (tm , 1) -- мало, надо знать имена переменных в контексте!
-    forall A : ty , B : ty , x.b : tm  -- х есть переменная (у метаперем есть сорт)
-      x : A |- b : B |--- |- lam(A , (x y). b) : arr(A , B) -- переменные это переменные сорта какого-то
-                                    -- incorrect, not typecheck, needs (tm , 1)
-                                    -- Gamma is everywhere, so we check if we have x in context not context equality
+   ------  b : (tm , 1) -- to little info, need to know variable names in context of b
+    forall A : ty , B : ty , x.b : tm
+      x : A |- b : B |--- |- lam(A , (x y). b) : arr(A , B)
+            -- incorrect, not typecheck, needs (tm , 1)
+
   AxiomTwo =
-    forall (x y).b : tm , B : ty , A : ty  -- не ругаться если больше параметров чем использованных
-      x : A |- b : B , |- a : A |---- |- app( lam(A , x.b) , a) : B -- имеем subst по дефолту
-                                                        -- что-то ещё есть по дефолту? (:, =, subst)
+    forall (x y).b : tm , B : ty , A : ty
+      x : A |- b : B , |- a : A |---- |- app( lam(A , x.b) , a) : B
 
   AxiomThree =
-    forall (x y).b : tm , z.B : tn , A : ty  -- meta : (for sorts)
-      x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ] -- следить за свободными
+    forall (x y).b : tm , z.B : tn , A : ty  -- meta ":" - for sorts
+      x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ]
 
   DepApp =
     forall x.B : ty, A : ty, e1 : tm , e2 : tm
       |- e1 : pi(A , x.B) , |- e2 : A  |--- |- app(e1 , e2) : B[ x := e2 ]
 
 
--- ReductionRules:
---  Beta =
---    forall x.b : tm , A : ty, a : tm
---      app(lam(A, x.b), a) => b [x := a]
-
-  -- no subst on the left here
-  -- unit type is hard - why?
-
-  -- no equality in the result, but can be in the premise!
+ReductionRules:
+  Beta =
+    forall x.b : tm , A : ty, a : tm
+      |--- |- app(lam(A, x.b), a) => b [x := a]
 
 
--- can context become larger? (yes), and context of the variable?
--- equality, subst and isTypeOf (lam(A , x.b) : arr(A , B))
--- right of forall can it have terms or not? (x.b : arr(A , B) -- no because ':' is meta op
 
 
--- end goal -- ast + parser + typechecker of lang
--- then add implicit params
+
+--------------------------

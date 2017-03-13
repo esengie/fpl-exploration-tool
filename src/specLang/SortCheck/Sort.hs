@@ -33,6 +33,9 @@ sortCheckSorts lsp = do
   deps <- lift . checkForDups "Duplicates in sorts" $ AST.depSortNames lsp
   sims <- lift . checkForDups "Duplicates in sorts" $ AST.simpleSortNames lsp
   when (Set.size (Set.intersection sims deps) /= 0) $ throwError "Dependent and simple sorts can't intersect"
+  unless (Set.member tmName deps) $ throwError $ "Need to have a " ++ tmName ++ " sort"
+  unless (Set.member tyName deps || Set.member tyName sims) $
+    throwError $ "Need to have a " ++ tyName ++ " sort"
   modify $ set depSorts deps
   modify $ set simpleSorts sims
 
