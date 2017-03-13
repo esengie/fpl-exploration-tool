@@ -65,7 +65,6 @@ data MetaVar = MetaVar {
 , mName     :: VarName
 } deriving (Eq, Show)
 
--- was Variable | FunApp FunSym [Term]
 data Term = Var VarName              -- xyz
           | TermInCtx [VarName] Term -- (x y).asd
           | FunApp Name [Term]

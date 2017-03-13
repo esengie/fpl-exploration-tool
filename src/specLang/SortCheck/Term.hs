@@ -20,7 +20,6 @@ type Ctx = [VarName]
 -- Given a context + forall. (The sort of the term was checked)
 -- ??Not all high level terms have to be sort checked (only statements)
 checkTerm :: MetaCtx -> Ctx -> Term -> SortCheckM Sort
--- проверить все аппы на корректность сортов
 checkTerm meta ctx (Var name) = do
       -- if name `elem` ctx
       --   then return varSort -- is this bullshit?
@@ -47,7 +46,7 @@ checkTerm meta ctx (FunApp f args) = do
           "\nbut have:\n\t" ++ show haveS
       return res
 
-checkTerm meta ctx (Subst v@(Var name) varName what) = do -- where must! be a metavar
+checkTerm meta ctx (Subst v@(Var name) varName what) = do -- v must(!) be a metavar
   -- we get: checking of compatibility of varName and v for free,
   -- also that v has all its' context and that it's a MetaVar
   sorte <- checkTerm meta ctx (TermInCtx [varName] v)

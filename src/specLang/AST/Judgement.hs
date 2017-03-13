@@ -9,7 +9,7 @@ import AST.Term
 
 data Judgement =
   Statement {
-  jContext   :: [(VarName, Term)] -- want Variable actually
+  jContext   :: [(VarName, Term)]
 , jTerm :: Term
 , jType :: Maybe Term    -- def as maybe
 } |
@@ -17,7 +17,7 @@ data Judgement =
   jContext   :: [(VarName, Term)]
 , jLeft  :: Term
 , jRight  :: Term
-, jType :: Maybe Term -- equality t1 = t2 : t3
+, jType :: Maybe Term -- equality t1 = t2 : Maybe t3
 } |
   Reduct {
   jContext   :: [(VarName, Term)]

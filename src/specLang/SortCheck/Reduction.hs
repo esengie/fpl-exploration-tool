@@ -19,6 +19,7 @@ import SortCheck.Forall
 
 --------------------------------------------------------------------------------
 -- Reductions
+
 sortCheckReductions :: [Reduction] -> SortCheckM ()
 sortCheckReductions [] = return ()
 sortCheckReductions (red : reds) = do

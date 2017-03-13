@@ -7,15 +7,20 @@ The program then generates our target language's parser and typechecker, so we c
 Think of it as a high level yacc+lex.
 
 
-
 To launch:
 
 stack install alex happy
 
-stack exec alex Lexer.x
+stack exec alex src/specLang/parsLex/Lexer.x
 
-stack exec happy Parser.y
+stack exec happy alex src/specLang/parsLex/Parser.y
 
-# fpl-exploration-tool
+stack repl
 
-https://www.pivotaltracker.com/n/projects/1903237
+And "mainCheck" checks your ".fpl" file (there's also a "mainParse" - in Parser module)
+
+E.g.: mainCheck "examples/langSpecs/depTypedLC.fpl"
+
+
+
+---

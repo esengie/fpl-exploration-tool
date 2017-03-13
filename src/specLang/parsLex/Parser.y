@@ -1,5 +1,7 @@
 {
-module Parser(parseLang) where
+module Parser(
+  parseLang
+) where
 
 import AST
 import AST.Axiom as Ax
