@@ -97,10 +97,12 @@ checkCtx mCtx = checkCtxVarsHelper mCtx []
           checkCtxVarsHelper mCtx ctx xs
       -- ELSE it's a variable
         Left _ -> do
-          lift $
-            lookupName' (\x name -> name `elem` AST.mContext (fst x))
-                        vname
-                        mCtx
+          -- look through metavars' contexts
+          lift $ lookupName' (\x name -> name `elem` AST.mContext (fst x))
+                             vname
+                             mCtx
+          unless (allUnique  $ vname : ctx) $
+            throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vname
           checkCtxVarsHelper mCtx (vname : ctx) xs
 
 

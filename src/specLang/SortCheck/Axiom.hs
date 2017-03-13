@@ -50,7 +50,7 @@ getAxFunSym (Axiom _ _ _ (Statement _ (FunApp name tms) _)) = do
     checkArgsAreMetaVars _ = throwError $ "Not all terms in " ++ name ++ " are metavars"
 
 getAxFunSym (Axiom _ _ _ Statement {}) =
-  throwError "Implementation bug, should have FunApp here(?)"
+  throwError "Implementation bug, should have FunApp here"
 getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement in conclusion"
 
 -- need to check forall var types and change them if need be

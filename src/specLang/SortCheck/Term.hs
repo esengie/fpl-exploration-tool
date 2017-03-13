@@ -54,7 +54,7 @@ checkTerm meta ctx (Subst v@(Var name) varName what) = do -- where must! be a me
   -- check that the sort of what is tm
   whatSort <- checkTerm meta ctx what
   if whatSort /= varSort
-    then throwError "Can't subst non term sort!"
+    then throwError $ "Can't subst " ++ show whatSort ++ " into a var of sort " ++ show varSort
     else lift (lowerCtx sorte)
 checkTerm meta ctx Subst{} = throwError "May substitute only into metavars"
 
