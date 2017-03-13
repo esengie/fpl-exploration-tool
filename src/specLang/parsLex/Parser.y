@@ -2,6 +2,8 @@
 module Parser(parseLang) where
 
 import AST
+import AST.Axiom as Ax
+import AST.Reduction as Red
 import Lexer
 
 }
@@ -20,10 +22,13 @@ import Lexer
       simpleSortBeg   { Token _ TSimpleS    }
       funSymBeg       { Token _ TFunSyms    }
       axBeg           { Token _ TAxioms     }
+      redBeg          { Token _ TReds       }
       V               { Token _ TForall     }
+      def             { Token _ TDef        }
       '='             { Token _ TEq         }
       ':'             { Token _ TColon      }
       '|-'            { Token _ TTurnstile  }
+      '=>'            { Token _ TReduce     }
       '|---'          { Token _ TJudgement  }
       ','             { Token _ TComma      }
       '.'             { Token _ TDot        }
@@ -40,11 +45,13 @@ import Lexer
 
 %%
 
-LangSpec        :   DepSorts SimpleSorts FunSyms AxiomsAll    { LangSpec $1 $2 $3 $4 }
-                |   SimpleSorts DepSorts FunSyms AxiomsAll    { LangSpec $2 $1 $3 $4 }
+LangSpec        :   DepSorts SimpleSorts FunSyms AxiomsAll ReductionsAll  { LangSpec $1 $2 $3 $4 $5 }
+                |   SimpleSorts DepSorts FunSyms AxiomsAll ReductionsAll  { LangSpec $2 $1 $3 $4 $5 }
 
 SimpleSorts     :   simpleSortBeg ':' '\t' CommaSepNames '/t' { $4 }
+                |   simpleSortBeg ':' '\t'               '/t' { [] }
 DepSorts        :   depSortBeg ':' '\t' CommaSepNames '/t'    { $4 }
+                |   depSortBeg ':' '\t'               '/t'    { [] }
 CommaSepNames   :   ident                                     { [$1] }
                 |   ident ',' CommaSepNames                   { $1 : $3 }
 
@@ -59,10 +66,24 @@ SortLeft        :   ident                                     { SimpleSort $1 }
                 |   '(' ident ',' int ')'                     { DepSort $2 $4 }
 
 AxiomsAll       :   axBeg ':' '\t' Axioms '/t'                { $4 }
+                |   axBeg ':' '\t'        '/t'                { [] }
+ReductionsAll   :   redBeg ':' '\t' Reductions '/t'           { $4 }
+                |   redBeg ':' '\t'            '/t'           { [] }
+
 Axioms          :   Axiom                                     { [$1] }
                 |   Axiom Axioms                              { $1 : $2 }
+Reductions      :   Reduction                                 { [$1] }
+                |   Reduction Reductions                      { $1 : $2 }
+
 Axiom           :   ident '=' '\t' Forall '\t'
                       Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
+                |   ident '=' '\t' Forall '\t'
+                      '|---' JudgementNoEq '/t' '/t'          { Axiom $1 $4 [] $7 }
+
+Reduction       :   ident '=' '\t' Forall '\t'
+                      Premise '|---' JudgeReduct '/t' '/t'    { Reduction $1 $4 $6 $8 }
+                |   ident '=' '\t' Forall '\t'
+                      '|---' JudgeReduct '/t' '/t'            { Reduction $1 $4 [] $7 }
 
 Forall          :   V ForallVars                              { $2 }
 ForallVars      :   ForallVar                                 { [$1] }
@@ -78,14 +99,23 @@ SpaceSepNames   :   ident                                     { [$1] }
 Premise         :   JudgementWithEq                           { [$1] }
                 |   JudgementWithEq ',' Premise               { $1 : $3 }
 
-JudgementNoEq   :   '|-' Term ':' Term                        { Statement [] $2 $4 }
-                |   Context '|-' Term ':' Term                { Statement $1 $3 $5 }
+JudgementNoEq   :   '|-' Term ':' Term                        { Statement [] $2 (Just $4) }
+                |   '|-' Term def                             { Statement [] $2 Nothing }
+                |   Context '|-' Term ':' Term                { Statement $1 $3 (Just $5) }
+                |   Context '|-' Term def                     { Statement $1 $3 Nothing }
 
 
-JudgementWithEq :   '|-' Term ':' Term                        { Statement [] $2 $4 }
-                |   '|-' Term '=' Term ':' Term               { Equality [] $2 $4 $6 }
-                |   Context '|-' Term ':' Term                { Statement $1 $3 $5 }
-                |   Context '|-' Term '=' Term ':' Term       { Equality $1 $3 $5 $7 }
+JudgementWithEq :   JudgementNoEq                             { $1 }
+                |   '|-' Term '=' Term                        { Equality [] $2 $4 Nothing }
+                |   '|-' Term '=' Term ':' Term               { Equality [] $2 $4 (Just $6) }
+                |   Context '|-' Term '=' Term                { Equality $1 $3 $5 Nothing }
+                |   Context '|-' Term '=' Term ':' Term       { Equality $1 $3 $5 (Just $7) }
+
+JudgeReduct     :   '|-' Term '=>' Term                        { Reduct [] $2 $4 Nothing }
+                |   '|-' Term '=>' Term ':' Term               { Reduct [] $2 $4 (Just $6) }
+                |   Context '|-' Term '=>' Term                { Reduct $1 $3 $5 Nothing }
+                |   Context '|-' Term '=>' Term ':' Term       { Reduct $1 $3 $5 (Just $7) }
+
 
 Context         :   ident ':' Term                            { [($1, $3)] }
                 |   ident ':' Term ',' Context                { ($1, $3) : $5 }
@@ -117,5 +147,13 @@ happyError (Token p t) =
 
 parseLang :: FilePath -> String -> Either String LangSpec
 parseLang fp code = runAlex' fp code parse
+
+mainParse :: FilePath -> IO ()
+mainParse file = do
+  str <- readFile file
+  let k = parseLang (show file) str
+  case k of
+    Right x -> putStr $ show x
+    Left x -> putStr x
 
 }

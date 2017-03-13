@@ -2,8 +2,8 @@
 -- Lexer reads tokens, add indents where needed and removes all (!) the empty newlines -- maybe this is bad,
 -- but otherwise <UNTAB> <UNTAB> <TAB> <TAB> is breaking my parser. (Should've read up on happy and alex more, but eh)
 
-module Lexer
-  ( Token(..)
+module Lexer(
+    Token(..)
   , AlexPosn(..)
   , TokenClass(..)
   , unLex
@@ -11,7 +11,7 @@ module Lexer
   , runAlex'
   , alexMonadScan'
   , alexError'
-  , maien
+  , mainLex
   ) where
 import Prelude hiding (lex)
 import Control.Monad ( liftM, forever, when )
@@ -36,9 +36,12 @@ tokens :-
   "SimpleSorts"                         { lex' TSimpleS     }
   "FunctionalSymbols"                   { lex' TFunSyms     }
   "Axioms"                              { lex' TAxioms      }
+  "Reductions"                          { lex' TReds        }
   "forall"                              { lex' TForall      }
+  "def"                                 { lex' TDef         }
   $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
   "="                                   { lex' TEq          }
+  "=>"                                  { lex' TReduce      }
   ":"                                   { lex' TColon       }
   "|-"                                  { lex' TTurnstile   }
   "|--" "-"*                            { lex' TJudgement   }
@@ -74,11 +77,14 @@ data TokenClass
   | TSimpleS
   | TFunSyms
   | TAxioms
+  | TReds
   | TForall
+  | TDef
   | TIdent String
   | TEq
   | TColon
   | TTurnstile
+  | TReduce
   | TJudgement
   | TComma
   | TDot
@@ -187,8 +193,8 @@ printHelper (Right r) = map (unLex . detok) r
 tokenize::String-> Either String [Token]
 tokenize s = runAlex' "sad" s readtoks
 
-maien :: String -> [String]
-maien input = printHelper (tokenize input)
+mainLex :: String -> [String]
+mainLex input = printHelper (tokenize input)
 
 -- For nice parser error messages.
 unLex :: TokenClass -> String
@@ -197,11 +203,14 @@ unLex TDepS = "!DepS"
 unLex TSimpleS = "!SimpleS"
 unLex TFunSyms = "!FunsSyms"
 unLex TAxioms = "!Axioms"
+unLex TReds   = "!Reductions"
 unLex TForall = "FORALL"
+unLex TDef = "def"
 unLex (TIdent s) = s
 unLex TEq = "="
 unLex TColon = ":"
 unLex TTurnstile = "|-"
+unLex TReduce = "=>"
 unLex TJudgement = "|---"
 unLex TComma = ","
 unLex TDot = "."

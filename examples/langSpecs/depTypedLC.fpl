@@ -30,10 +30,10 @@ Axioms :
     forall t1 : tm , t2 : tm , S : ty, x.T : ty  -- не ругаться если больше параметров чем использованных
       |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2] -- !! tut x.T or T??
 
--- ReductionRules:
---  Beta =
---    forall x.b : tm , A : ty, a : tm
---      app(lam(A, x.b), a) => b [x := a]
+Reductions :
+  Beta =
+    forall x.b : tm , A : ty, a : tm
+      |--- |- app(lam(A , x.b) , a) => b [x := a]
 
   -- no subst on the left here
   -- unit type is hard - why?
