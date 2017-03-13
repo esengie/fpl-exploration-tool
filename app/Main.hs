@@ -1,6 +1,6 @@
 module Main where
 
-import Lexer
+import SortCheck
 
 main :: IO ()
 main = putStr "m"

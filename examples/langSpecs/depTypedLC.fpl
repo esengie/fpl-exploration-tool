@@ -2,7 +2,7 @@ DependentSorts :
   tm, ty
 
 SimpleSorts :
-
+  tn
 
 FunctionalSymbols :
   pi : (ty , 0) * (ty , 1) -> ty -- sigma : (ty , 0) * (ty , 1) -> ty
@@ -16,22 +16,24 @@ Axioms :
 -- context - only vars
   -- !! how to do basic types? - we have tm, but how to have a substructure on that? like, say, bool?
 
+  KPi =
+    forall T1 : ty , x.T2 : ty
+      x : T1 |- T2 def |--- |- pi(T1, x.T2) def
+
   TAbs =  -- !! what happens if I have a "-" in my axioms?
    ------  b : (tm , 1) -- мало, надо знать имена переменных в контексте!
     forall S : ty , x.T : ty , x.t : tm  -- х есть переменная (у метаперем есть сорт)
-      |- S = S , x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
-                -- !! is this ok? (t:T, not x.t ?)
+      x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
                 -- Gamma is everywhere, so we check if we have x in context not context equality
+
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty  -- не ругаться если больше параметров чем использованных
       |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2] -- !! tut x.T or T??
-                                                        -- имеем subst по дефолту
-                                                        -- что-то ещё есть по дефолту? (:, =, subst)
 
--- ReductionRules:
---  Beta =
---    forall x.b : tm , A : ty, a : tm
---      app(lam(A, x.b), a) => b [x := a]
+Reductions :
+  Beta =
+    forall x.b : tm , A : ty, a : tm
+      |--- |- app(lam(A , x.b) , a) => b [x := a]
 
   -- no subst on the left here
   -- unit type is hard - why?
@@ -46,27 +48,3 @@ Axioms :
 
 -- end goal -- ast + parser + typechecker of lang
 -- then add implicit params
-
-__
-1) А в любом языке который я специфицирую как пользователь есть ещё конструкция (пускай Var ...) Var "string" - которая задает переменную?
-Ну и видимо есть базовый тип, пускай "o"?
-
-Пример, пускай есть такая аксиома/правило вывода (доп вопрос, она правильно записана? А именно t и T записаны без связывания, но x есть в их контексте):
-TAbs =
- forall S : ty , x.T : ty , x.t : tm
-   |- S = S , x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
-
-Хочу записать id : pi("o", x."o"). Хорошо, первая предпосылка (|- "o" = "o") это аксиома языка.
-Вторую (x : "o" |- x : "o") я не очень понимаю как записать.
-Видимо нужна аксиома, пускай такая: AxVar (Var "x") (Type "o") - это и есть то что требуется? (аксиома выглядит так |- x : "o" (*))
-Ну и пишу TAbs(Type "o", Type "o", Var "x", AxBaseType "o", AxVar (Var "x") (Type "o")) - это мой id видимо?
-
-2) Как мне как пользователю расширять базовые типы? (хочу например Bool)
-
-Пока что у нас есть аксиомы в которые начинаются с forall A : ty - то бишь работают для всех типов,
-а мне нужна возможность вводить аксиомы работающие для конкретных типов.
-
-Видимо ответ на вопрос о расширении "пока никак, тк язык не дает"?
-Или доп пунктик добавить с базовыми типами и все будет нормально?
-
-(*) Увеличение контекста в наших случаях ничего не ломает насколько я понимаю?
