@@ -12,7 +12,9 @@ module AST.Term(
   tyName,
   tmName,
   getSortName,
+  addToCtx,
   lowerCtx,
+  zero,
   isDepSort,
   lookupName,
   lookupName',
@@ -54,10 +56,18 @@ getSortName :: Sort -> SortName
 getSortName (DepSort nm _) = nm
 getSortName (SimpleSort nm) = nm
 
+zero :: Sort -> Sort
+zero (DepSort nm _) = DepSort nm 0
+zero x = x
+
+addToCtx :: ContextDepth -> Sort -> DefaultErr Sort
+addToCtx _ (SimpleSort _) = Left "Simple sorts can't have context"
+addToCtx n (DepSort nm num) | num + n >= 0 = return (DepSort nm $ num + n)
+                            | otherwise = Left "Context is empty already"
+
 lowerCtx :: Sort -> DefaultErr Sort
-lowerCtx (SimpleSort _) = Left "Simple sorts can't have context"
-lowerCtx (DepSort nm num) | num > 0 = return (DepSort nm $ num - 1)
-                          | otherwise = Left "Context is empty already"
+lowerCtx = addToCtx (-1)
+
 isDepSort :: Sort -> Bool
 isDepSort (DepSort _ _) = True
 isDepSort _ = False
@@ -113,7 +123,7 @@ lookupName f = lookupName' (\x y -> f x == y)
 lookupName' :: (a -> Name -> Bool) -> Name -> [a] -> DefaultErr a
 lookupName' idf name (x : xs) | idf x name = return x
   | otherwise = lookupName' idf name xs
-lookupName' _ name _ = Left $ "Name " ++ name ++ " not found!"
+lookupName' _ name _ = Left $ "Name " ++ show name ++ " not found!"
 
 allUnique :: Ord a => [a] -> Bool
 allUnique a = length a == Set.size (Set.fromList a)

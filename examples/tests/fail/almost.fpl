@@ -1,0 +1,24 @@
+DependentSorts : -- meaning context dependent
+  tm, tn -- all depsorts depend on tm, (tm must always exist) tm always dependent
+
+SimpleSorts :
+  ty   -- ty should always exist, mb dep mb indep
+
+FunctionalSymbols :
+  arr : ty * ty -> ty
+  cart : (tn , 0) * (tn , 0) -> tn
+  pi : (tn , 0) * (tn , 1) -> tn  -- B : A -> U, we have B(x) - so we need x in our context
+  sigma : (tn , 0) * (tn , 1) -> tn
+  lam : ty * (tm , 1) -> tm
+  app : (tm , 0) * (tm , 0) -> tm
+
+Reductions:
+  Beta =
+    forall x.b : tm , A : ty, a : tm
+      |--- |- app(lam(A, x.b), a) => b [x := a]
+
+
+
+
+
+--------------------------

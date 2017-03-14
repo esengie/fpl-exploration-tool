@@ -24,19 +24,19 @@ Axioms :
             -- incorrect, not typecheck, needs (tm , 1)
 
   AxiomTwo =
-    forall (x y).b : tm , B : ty , A : ty
-      x : A |- b : B , |- a : A |---- |- app( lam(A , x.b) , a) : B
+    forall (x y).b : tm , B : ty , A : ty, a : tm
+      y : A, x : A |- b : B , |- a : A |---- y : A |- app( lam(A , x.b) , a) : B
 
   AxiomThree =
     forall (x y).b : tm , z.B : tn , A : ty  -- meta ":" - for sorts
-      x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ]
+      y: A, x : A |- b : B , |- a : A |--- |- app( lam(A , (y x).b[x:=a]) , a) : B [ z := a ]
 
   DepApp =
     forall x.B : ty, A : ty, e1 : tm , e2 : tm
       |- e1 : pi(A , x.B) , |- e2 : A  |--- |- app(e1 , e2) : B[ x := e2 ]
 
 
-ReductionRules:
+Reductions:
   Beta =
     forall x.b : tm , A : ty, a : tm
       |--- |- app(lam(A, x.b), a) => b [x := a]
