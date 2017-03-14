@@ -29,21 +29,22 @@ checkTerm meta ctx (Var name) = do
     unless (isSubset (mContext mVar) ctx) $
       throwError $ "Not all vars of a metavar are in context! Have:\n\t" ++
         show ctx ++ "\nNeed:\n\t" ++ show (mContext mVar)
-    return sort
+    return (zero sort)
 checkTerm meta ctx (TermInCtx vars tm) = do
   unless (allUnique $ vars ++ ctx) $
     throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
-  checkTerm meta (vars ++ ctx) tm
+  st <- checkTerm meta (vars ++ ctx) tm
+  lift $ addToCtx (length vars) st
 
-checkTerm meta ctx (FunApp f args) = do
+checkTerm meta ctx fa@(FunApp f args) = do
   st <- get
   case Map.lookup f (st^.SymbolTable.funSyms) of
-    Nothing -> throwError $ "Undefined funSym" ++ f
+    Nothing -> throwError $ "Undefined funSym " ++ show f
     Just (FunSym _ needS res) -> do
       haveS <- mapM (checkTerm meta ctx) args
       unless (all (uncurry (==)) (zip needS haveS)) $
         throwError $ "Arg sorts don't match, need:\n\t" ++ show needS ++
-          "\nbut have:\n\t" ++ show haveS
+          "\nbut have:\n\t" ++ show haveS ++ "\nin: " ++ show fa
       return res
 
 checkTerm meta ctx (Subst v@(Var name) varName what) = do -- v must(!) be a metavar

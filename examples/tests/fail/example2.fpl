@@ -1,0 +1,35 @@
+-- <- comment, indent is meaningful
+
+DependentSorts : -- meaning context dependent
+  tm, ty -- all depsorts depend on tm, (tm must always exist) tm always dependent
+
+FunctionalSymbols :
+  arr : (ty, 0) * (ty, 0) -> ty
+  cart : (ty , 0) * (ty , 0) -> ty
+  pi : (ty , 0) * (ty , 1) -> ty  -- B : A -> U, we have B(x) - so we need x in our context
+  sigma : (ty , 0) * (ty , 1) -> ty
+  lam : (ty, 0) * (tm , 1) -> tm
+  app : (tm , 0) * (tm , 0) -> tm
+
+Axioms :
+-- (tm , 0) -- means \x -> x; (tm , 1) \x -> y, var always term
+
+  AxiomThree =
+    forall (x y).b : tm , z.B : ty , A : ty, a : tm  -- meta ":" - for sorts
+      y: A, x : A, z : A |- B def , |- a : A |--- x : A |- lam(A , y.b) : B [ z := a ]
+
+  DepApp =
+    forall x.B : ty, A : ty, e1 : tm , e2 : tm
+      |- e1 : pi(A , x.B) , |- e2 : A  |--- |- app(e1 , e2) : B[ x := e2 ]
+
+
+Reductions:
+  Beta =
+    forall x.b : tm , A : ty, a : tm
+      |--- |- app(lam(A, x.b), a) => b [x := a]
+
+
+
+
+
+--------------------------
