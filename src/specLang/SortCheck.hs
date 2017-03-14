@@ -37,7 +37,7 @@ mainCheck file = do
   let lang = parseLang (show file) str
   putStrLn $ case runSortCheck lang of
     Left err -> "hmm " ++ err
-    x -> show x
+    Right x -> show x
 
 
 

@@ -23,7 +23,7 @@ sortCheckFunSyms :: [FunctionalSymbol] -> SortCheckM ()
 sortCheckFunSyms [] = return ()
 sortCheckFunSyms (fs : fss) = do
   fs' <- checkFun fs
-  modify $ over SymbolTable.funSyms (Map.insert (nameFun fs') fs')
+  modify $ over SymbolTable.funSyms (Map.insert (name fs') fs')
   sortCheckFunSyms fss
 
 -- Checks func redefinition, checks depsorts and simplesorts

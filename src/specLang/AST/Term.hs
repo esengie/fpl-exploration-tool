@@ -63,7 +63,7 @@ isDepSort (DepSort _ _) = True
 isDepSort _ = False
 
 data FunctionalSymbol = FunSym {
-  nameFun   :: Name
+  name   :: Name
 , arguments :: [Sort]
 , result    :: Sort       --- hack in the parser that gets solved in the checking stage
 } deriving (Eq)

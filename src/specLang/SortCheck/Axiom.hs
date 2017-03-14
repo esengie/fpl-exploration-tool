@@ -13,7 +13,7 @@ import Control.Monad (when, unless)
 import qualified Data.Map as Map
 
 import AST
-import AST.Axiom
+import AST.Axiom as Axiom
 import SortCheck.SymbolTable as SymbolTable
 import SortCheck.Judgement
 import SortCheck.Forall
@@ -32,7 +32,7 @@ sortCheckAxioms' :: [Axiom] -> SortCheckM ()
 sortCheckAxioms' [] = return ()
 sortCheckAxioms' (ax : axs) = do
   ax' <- checkAx ax
-  modify $ over SymbolTable.axioms (Map.insert (name ax') ax')
+  modify $ over SymbolTable.axioms (Map.insert (Axiom.name ax') ax')
 
   -- check there is only one funSym intro axiom
   -- can't have equalities in the conclusion
@@ -40,7 +40,7 @@ sortCheckAxioms' (ax : axs) = do
   st <- get
   when (isJust $ Map.lookup funSym (st^.iSymAxiomMap)) $
     throwError $ "There is already an intro axiom for " ++ funSym
-  modify $ over iSymAxiomMap (Map.insert funSym (name ax'))
+  modify $ over iSymAxiomMap (Map.insert funSym (Axiom.name ax'))
   sortCheckAxioms' axs
 
 -- could be less monadic, but it's easier to throw errors this way

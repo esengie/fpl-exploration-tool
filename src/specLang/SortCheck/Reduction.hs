@@ -12,7 +12,7 @@ import Control.Monad (when, unless)
 import qualified Data.Map as Map
 
 import AST
-import AST.Reduction
+import AST.Reduction as Reduction
 import SortCheck.SymbolTable as SymbolTable
 import SortCheck.Judgement
 import SortCheck.Forall
@@ -24,7 +24,7 @@ sortCheckReductions :: [Reduction] -> SortCheckM ()
 sortCheckReductions [] = return ()
 sortCheckReductions (red : reds) = do
   red' <- checkRed red
-  modify $ over SymbolTable.reductions (Map.insert (name red') red')
+  modify $ over SymbolTable.reductions (Map.insert (Reduction.name red') red')
 
   sortCheckReductions reds
 
