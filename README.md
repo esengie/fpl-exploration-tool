@@ -21,6 +21,7 @@ E.g.: mainCheck "examples/langSpecs/depTypedLC.fpl"
 # Notes:
 - May have depsorts and simplesorts or only depsorts
 - May have reductions or/and axioms
+- axiom names are alphaNum starting with a numeric, may contain "_", "-", "'"
 
 
 
