@@ -1,5 +1,4 @@
 module SortCheck.Term (
-  Ctx(..),
   checkTerm
 ) where
 
@@ -15,11 +14,9 @@ import AST
 import SortCheck.SymbolTable as SymbolTable
 import SortCheck.Forall (MetaCtx)
 
-type Ctx = [VarName]
-
 -- Given a context + forall. (The sort of the term was checked)
 -- ??Not all high level terms have to be sort checked (only statements)
-checkTerm :: MetaCtx -> Ctx -> Term -> SortCheckM Sort
+checkTerm :: MetaCtx -> Ctx -> Term -> SortCheckM (Term, Sort)
 checkTerm meta ctx (Var name) = do
       -- if name `elem` ctx
       --   then return varSort -- is this bullshit?
@@ -41,7 +38,8 @@ checkTerm meta ctx fa@(FunApp f args) = do
   case Map.lookup f (st^.SymbolTable.funSyms) of
     Nothing -> throwError $ "Undefined funSym " ++ show f
     Just (FunSym _ needS res) -> do
-      haveS <- mapM (checkTerm meta ctx) args
+      have <- mapM (checkTerm meta ctx) args
+      let haveS = map snd have
       unless (all (uncurry (==)) (zip needS haveS)) $
         throwError $ "Arg sorts don't match, need:\n\t" ++ show needS ++
           "\nbut have:\n\t" ++ show haveS ++ "\nin: " ++ show fa

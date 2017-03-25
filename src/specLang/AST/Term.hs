@@ -5,6 +5,7 @@ module AST.Term(
   ContextDepth(..),
   DefaultErr(..),
   Sort(..),
+  Ctx(..),
   FunctionalSymbol(..),
   MetaVar(..),
   Term(..),
@@ -35,6 +36,8 @@ type DefaultErr = Either String
 
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq)
+
+type Ctx = [VarName]
 
 bracket :: String -> String
 bracket s = "(" ++ s ++ ")"
@@ -96,15 +99,15 @@ instance Show MetaVar where
   show (MetaVar x y) = showCtxVar x y
 
 data Term = Var VarName              -- xyz
-          | TermInCtx [VarName] Term -- (x y).asd
-          | FunApp Name [Term]
+          | Meta MetaVar
+          | FunApp Name [(Ctx, Term)]
           | Subst Term VarName Term
     deriving (Eq)
 
 instance Show Term where
   show (Var nm) = nm
-  show (TermInCtx x y) = showCtxVar x (show y)
-  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map show args))
+  show (Meta vr) = mName vr
+  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map (\(x, y) -> showCtxVar x (show y)) args))
   show (Subst into vn what) = show into ++ "[" ++ vn ++ ":= " ++ show what ++ "]"
 
 isFunSym :: Term -> Bool
@@ -113,7 +116,6 @@ isFunSym _ = False
 
 isVar :: Term -> Bool
 isVar Var{} = True
-isVar (TermInCtx _ Var{}) = True
 isVar _ = False
 
 lookupName :: (a -> Name) -> Name -> [a] -> DefaultErr a

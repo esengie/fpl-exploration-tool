@@ -47,13 +47,12 @@ sortCheckAxioms' (ax : axs) = do
 -- statements are always funSym intros
 getAxFunSym :: Axiom -> SortCheckM Name
 getAxFunSym (Axiom _ _ _ (Statement _ (FunApp name tms) _)) = do
-  checkArgsAreMetaVars tms
+  checkArgsAreMetaVars (map snd tms)
   return name
   where
     checkArgsAreMetaVars :: [Term] -> SortCheckM ()
     checkArgsAreMetaVars [] = return ()
-    checkArgsAreMetaVars (Var _ : xs) = checkArgsAreMetaVars xs
-    checkArgsAreMetaVars (TermInCtx _ (Var _) : xs) = checkArgsAreMetaVars xs
+    checkArgsAreMetaVars (Meta _ : xs) = checkArgsAreMetaVars xs
     checkArgsAreMetaVars _ = throwError $ "Not all terms in " ++ name ++ " are metavars"
 
 getAxFunSym (Axiom _ _ _ Statement {}) =
@@ -76,10 +75,10 @@ checkAx ax@(Axiom name forall prem concl) = do
   --   throwError $ "Statements must define fun syms\n" ++ show st
 
   forall' <- checkForallVars forall
-  mapM_ (checkJudgem forall') prem
-  checkJudgem forall' concl
+  prem' <- mapM (checkJudgem forall') prem
+  concl' <- checkJudgem forall' concl
 
-  return (Axiom name forall' prem concl)
+  return (Axiom name forall' prem' concl')
 
 
 

@@ -23,7 +23,7 @@ import SortCheck.Sort
 -- given meta vars (forall) and a judgement - SortChecks it
 -- first checks context
 -- !!!then does all the different judgement specific ops
-checkJudgem :: MetaCtx -> Judgement -> SortCheckM ()
+checkJudgem :: MetaCtx -> Judgement -> SortCheckM Judgement
 checkJudgem meta st = do
   let ctx = jContext st
   vars <- checkCtx meta ctx
@@ -33,23 +33,24 @@ checkJudgem meta st = do
 -- Statement - check "tm : ty"
 -- Equality & reduction - check sorts are same in = & =>
 -- Reduction - check right has subset of metas & left starts with funsym
-checkJSpecific :: MetaCtx -> Ctx -> Judgement -> SortCheckM ()
-checkJSpecific meta ctx (Statement _ tm (Just ty)) = do
-  tmSort <- checkTerm meta ctx tm
-  tySort <- checkTerm meta ctx ty
-  checkTmSort tmSort tm
-  checkTySort tySort ty
-checkJSpecific meta ctx (Statement _ tm Nothing) = do
-  checkTerm meta ctx tm
-  return ()
+checkJSpecific :: MetaCtx -> Ctx -> Judgement -> SortCheckM Judgement
+checkJSpecific meta ctx (Statement ctx tm (Just ty)) = do
+  (tm', tmSort) <- checkTerm meta ctx tm
+  (ty', tySort) <- checkTerm meta ctx ty
+  checkTmSort tmSort tm'
+  checkTySort tySort ty'
+  return (Statement ctx tm' (Just ty'))
+checkJSpecific meta ctx (Statement ctx tm Nothing) = do
+  (tm', _) <- checkTerm meta ctx tm
+  return (Statement ctx tm' Nothing)
 checkJSpecific meta ctx ax@Equality{} = checkEqAndRed meta ctx ax
 -- left starts from funsym
 checkJSpecific meta ctx red@(Reduct _ l@FunApp{} r ty) = do
-  checkEqAndRed meta ctx red
   -- reduct specific stuff:
   -- all metas right in left
   unless (getMetas r `Set.isSubsetOf` getMetas l) $ throwError $
     "Metas to the right of reduction should be present on the left" ++ show red
+  checkEqAndRed meta ctx red
   where
     getMetas :: Term -> Set.Set SortName
     getMetas = getMetas' Set.empty
@@ -62,7 +63,7 @@ checkJSpecific meta ctx red@(Reduct _ l@FunApp{} r ty) = do
 checkJSpecific _ _ red = throwError $ "Reducts should start from a funSym " ++ show red
 
 
-checkEqAndRed :: MetaCtx -> Ctx -> Judgement -> SortCheckM ()
+checkEqAndRed :: MetaCtx -> Ctx -> Judgement -> SortCheckM Judgement
 checkEqAndRed meta ctx judg = do
   lSort <- checkTerm meta ctx (jLeft judg)
   rSort <- checkTerm meta ctx (jRight judg)
