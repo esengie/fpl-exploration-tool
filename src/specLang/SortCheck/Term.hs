@@ -33,12 +33,9 @@ fixTerm meta ctx (Var name) = do
   st <- get
   if Map.member name (st^.SymbolTable.funSyms)
     then return (FunApp name [])
-    else if name `elem` ctx
-      then return $ Var name
-      else do
-        (ret, _) <- lift $ changeError (name ++ " is not a variable") $
-                lookupName (AST.mName . fst) name meta
-        return $ Meta ret
+    else case lookupName (AST.mName . fst) name meta of
+      Right (ret, _) -> return $ Meta ret
+      Left _ -> return $ Var name
 
 fixTerm meta ctx (FunApp f args) = do
   args' <- mapM (\(ctx', tm) -> do
@@ -58,7 +55,7 @@ checkTerm' :: MetaCtx -> Ctx -> Term -> SortCheckM Sort
 checkTerm' meta ctx (Var name) =
     if name `elem` ctx
       then return varSort
-      else throwError $ name ++ " is not a variable"
+      else throwError $ name ++ " is not defined anywhere"
 checkTerm' meta ctx (Meta vr) = do
     -- so we're a metavar: check we have all we need in ctx and return our sort
     (mVar, sort) <- lift (lookupName (AST.mName . fst) (mName vr) meta)
