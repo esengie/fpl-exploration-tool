@@ -1,5 +1,6 @@
 module SortCheck.Term (
-  checkTerm
+  checkTerm,
+  checkCtxShadowing
 ) where
 
 import Control.Monad.Trans.State.Lazy
@@ -14,47 +15,87 @@ import AST
 import SortCheck.SymbolTable as SymbolTable
 import SortCheck.Forall (MetaCtx)
 
+checkCtxShadowing :: Ctx -> Ctx -> SortCheckM Ctx
+checkCtxShadowing ctx vars = do
+  unless (allUnique $ vars ++ ctx) $
+    throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
+  return $ vars ++ ctx
+
+checkTerm :: MetaCtx -> Ctx -> Term -> SortCheckM (Term, Sort)
+checkTerm meta ctx tm = do
+  tm' <- fixTerm meta ctx tm
+  srt <- checkTerm' meta ctx tm'
+  return (tm', srt)
+
+-- Need this as a second pass parser stage, as all identifiers are parsed as vars initially
+fixTerm :: MetaCtx -> Ctx -> Term -> SortCheckM Term
+fixTerm meta ctx (Var name) = do
+  st <- get
+  if Map.member name (st^.SymbolTable.funSyms)
+    then return (FunApp name [])
+    else if name `elem` ctx
+      then return $ Var name
+      else do
+        (ret, _) <- lift $ changeError (name ++ " is not a variable") $
+                lookupName (AST.mName . fst) name meta
+        return $ Meta ret
+
+fixTerm meta ctx (FunApp f args) = do
+  args' <- mapM (\(ctx', tm) -> do
+    ctx'' <- checkCtxShadowing ctx ctx'
+    tm' <- fixTerm meta ctx'' tm
+    return (ctx', tm')) args
+  return (FunApp f args')
+fixTerm meta ctx (Subst wher v what) = do
+  ctx' <- checkCtxShadowing ctx [v]
+  wher' <- fixTerm meta ctx' wher
+  what' <- fixTerm meta ctx what
+  return (Subst wher' v what')
+
 -- Given a context + forall. (The sort of the term was checked)
 -- ??Not all high level terms have to be sort checked (only statements)
-checkTerm :: MetaCtx -> Ctx -> Term -> SortCheckM (Term, Sort)
-checkTerm meta ctx (Var name) = do
-      -- if name `elem` ctx
-      --   then return varSort -- is this bullshit?
-      --   else do
+checkTerm' :: MetaCtx -> Ctx -> Term -> SortCheckM Sort
+checkTerm' meta ctx (Var name) =
+    if name `elem` ctx
+      then return varSort
+      else throwError $ name ++ " is not a variable"
+checkTerm' meta ctx (Meta vr) = do
     -- so we're a metavar: check we have all we need in ctx and return our sort
-    (mVar, sort) <- lift (lookupName (AST.mName . fst) name meta)
+    (mVar, sort) <- lift (lookupName (AST.mName . fst) (mName vr) meta)
     unless (isSubset (mContext mVar) ctx) $
       throwError $ "Not all vars of a metavar are in context! Have:\n\t" ++
         show ctx ++ "\nNeed:\n\t" ++ show (mContext mVar)
-    return (zero sort)
-checkTerm meta ctx (TermInCtx vars tm) = do
-  unless (allUnique $ vars ++ ctx) $
-    throwError $ "Added vars that shadow other vars in ctx:\n" ++ show ctx ++ show vars
-  st <- checkTerm meta (vars ++ ctx) tm
-  lift $ addToCtx (length vars) st
+    return $ zero sort -- easy for funapps
 
-checkTerm meta ctx fa@(FunApp f args) = do
+checkTerm' meta ctx fa@(FunApp f args) = do
   st <- get
   case Map.lookup f (st^.SymbolTable.funSyms) of
     Nothing -> throwError $ "Undefined funSym " ++ show f
     Just (FunSym _ needS res) -> do
-      have <- mapM (checkTerm meta ctx) args
-      let haveS = map snd have
+      haveS <- mapM (\(ctx', tm) -> do
+        ctx'' <- checkCtxShadowing ctx ctx'
+        srt <- checkTerm' meta ctx'' tm
+        lift $ addToCtx (length ctx') srt) args
       unless (all (uncurry (==)) (zip needS haveS)) $
         throwError $ "Arg sorts don't match, need:\n\t" ++ show needS ++
           "\nbut have:\n\t" ++ show haveS ++ "\nin: " ++ show fa
       return res
-
-checkTerm meta ctx (Subst v@(Var name) varName what) = do -- v must(!) be a metavar
+checkTerm' meta ctx ar@(Subst v@(Meta name) varName what) = do -- v must(!) be a metavar
   -- we get: checking of compatibility of varName and v for free,
   -- also that v has all its' context and that it's a MetaVar
-  sorte <- checkTerm meta ctx (TermInCtx [varName] v)
+  ctx' <- checkCtxShadowing ctx [varName]
+  sorte <- checkTerm' meta ctx' v
   -- check that the sort of what is tm
-  whatSort <- checkTerm meta ctx what
+  whatSort <- checkTerm' meta ctx what
   if whatSort /= varSort
     then throwError $ "Can't subst " ++ show whatSort ++ " into a var of sort " ++ show varSort
-    else lift (lowerCtx sorte)
-checkTerm meta ctx Subst{} = throwError "May substitute only into metavars"
+    else return sorte
+checkTerm' _ _ Subst{} = throwError "May substitute only into metavars"
+
+
+
+  -- st <- checkTerm' meta (vars ++ ctx) tm
+  -- lift $ addToCtx (length vars) st
 
 -- old subst check
 -- -- we check that what is a tm

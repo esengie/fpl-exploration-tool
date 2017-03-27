@@ -65,7 +65,7 @@ checkAx :: Axiom -> SortCheckM Axiom
 checkAx ax@(Axiom name forall prem concl) = do
   st <- get
 
-  when (isJust $ Map.lookup name (st^.SymbolTable.axioms)) $
+  when (Map.member name $ st^.SymbolTable.axioms) $
     throwError $ "Axiom redefinition: " ++ name
 
   when (isEqJudgement concl) $

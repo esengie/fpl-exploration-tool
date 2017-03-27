@@ -22,7 +22,8 @@ module AST.Term(
   isFunSym,
   isVar,
   allUnique,
-  isSubset
+  isSubset,
+  changeError
 ) where
 
 import qualified Data.Set as Set
@@ -33,6 +34,10 @@ type VarName = String
 type Name = String
 type ContextDepth = Int
 type DefaultErr = Either String
+
+changeError :: String -> DefaultErr a -> DefaultErr a
+changeError msg (Left x) = Left (msg ++ "\n\t" ++ x)
+changeError _ x = x
 
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq)
@@ -82,6 +87,7 @@ data FunctionalSymbol = FunSym {
 } deriving (Eq)
 
 instance Show FunctionalSymbol where
+  show (FunSym nm [] res) = nm ++ ": " ++ show res
   show (FunSym nm args res) =
     nm ++ ": " ++ intercalate "*" (map show args) ++ "->" ++ show res
 
@@ -107,6 +113,7 @@ data Term = Var VarName              -- xyz
 instance Show Term where
   show (Var nm) = nm
   show (Meta vr) = mName vr
+  show (FunApp nm []) = nm
   show (FunApp nm args) = nm ++ bracket (intercalate ", " (map (\(x, y) -> showCtxVar x (show y)) args))
   show (Subst into vn what) = show into ++ "[" ++ vn ++ ":= " ++ show what ++ "]"
 
