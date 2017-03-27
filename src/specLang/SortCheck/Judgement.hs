@@ -6,6 +6,7 @@ module SortCheck.Judgement (
 import Control.Monad.Except (throwError)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad (when, unless)
+import Control.Lens
 
 import qualified Data.Set as Set
 
@@ -18,16 +19,16 @@ import SortCheck.Sort
 
 --------------------------------------------------------------------------------
 -- Judgements
-
+type TypedCtx = [(VarName, Term)]
 
 -- given meta vars (forall) and a judgement - SortChecks it
 -- first checks context
 -- !!!then does all the different judgement specific ops
 checkJudgem :: MetaCtx -> Judgement -> SortCheckM Judgement
-checkJudgem meta st = do
-  let ctx = jContext st
-  vars <- checkCtx meta ctx
-  checkJSpecific meta vars st
+checkJudgem meta jud = do
+  let ctx = _jContext jud
+  (vctx, ctx') <- checkCtx meta ctx
+  checkJSpecific meta vctx (jContext .~ ctx' $ jud)
 
 -- Specific stuff for judgements
 -- Statement - check "tm : ty"
@@ -84,14 +85,16 @@ checkEqAndRed meta ctx judg = do
 
 --------------------------------------------------------------------
 -- Adds vars to Ctx as it checks
-checkCtx :: MetaCtx -> [(VarName, Term)] -> SortCheckM Ctx
-checkCtx mCtx = checkCtxVarsHelper mCtx []
+-- Also fixes ctx terms
+checkCtx :: MetaCtx -> TypedCtx -> SortCheckM (Ctx, TypedCtx)
+checkCtx mCtx = checkCtxVarsHelper mCtx [] []
   where
-    checkCtxVarsHelper :: MetaCtx -> Ctx -> [(VarName, Term)] -> SortCheckM Ctx
-    checkCtxVarsHelper _ ctx [] = return ctx
-    checkCtxVarsHelper mCtx ctx ((vname, tm):xs) = do
+    checkCtxVarsHelper :: MetaCtx -> Ctx -> TypedCtx -> TypedCtx -> SortCheckM (Ctx, TypedCtx)
+    checkCtxVarsHelper _ ctx tctx [] = return (ctx, reverse tctx)
+    checkCtxVarsHelper mCtx ctx tctx ((vname, tm):xs) = do
       (tm', tySort) <- checkTerm mCtx ctx tm
       checkTySort tySort tm'
+      let tctx' = (vname, tm') : tctx
 
       -- check if it's in metas we have it fixed
       -- !!(this is here and not just
@@ -99,17 +102,13 @@ checkCtx mCtx = checkCtxVarsHelper mCtx []
       --         cause I forgot how destructure it)
       case lookupName (AST.mName . fst) vname mCtx of
         Right _ -> do
-          (tm', srt) <- checkTerm mCtx ctx (Var vname)
-          checkTmSort srt tm'
-          checkCtxVarsHelper mCtx ctx xs
+          (tm'', srt) <- checkTerm mCtx ctx (Var vname)
+          checkTmSort srt tm''
+          checkCtxVarsHelper mCtx ctx tctx' xs
       -- ELSE it's a variable
         Left _ -> do
-          -- look through metavars' contexts
-          lift $ lookupName' (\x name -> name `elem` AST.mContext (fst x))
-                             vname
-                             mCtx
           ctx' <- checkCtxShadowing ctx [vname]
-          checkCtxVarsHelper mCtx ctx' xs
+          checkCtxVarsHelper mCtx ctx' tctx' xs
 
 
 

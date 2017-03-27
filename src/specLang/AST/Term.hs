@@ -112,8 +112,8 @@ data Term = Var VarName              -- xyz
 
 instance Show Term where
   show (Var nm) = nm
-  show (Meta vr) = mName vr
-  show (FunApp nm []) = nm
+  show (Meta vr) = mName vr ++ "-m"
+  show (FunApp nm []) = nm ++ "-f"
   show (FunApp nm args) = nm ++ bracket (intercalate ", " (map (\(x, y) -> showCtxVar x (show y)) args))
   show (Subst into vn what) = show into ++ "[" ++ vn ++ ":= " ++ show what ++ "]"
 
