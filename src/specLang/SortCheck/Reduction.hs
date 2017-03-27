@@ -39,10 +39,10 @@ checkRed red@(Reduction name forall prem concl) = do
     throwError $ "Must be a reduction: " ++ name
 
   forall' <- checkForallVars forall
-  mapM_ (checkJudgem forall') prem
-  checkJudgem forall' concl
+  prem' <- mapM (checkJudgem forall') prem
+  concl' <- checkJudgem forall' concl
 
-  return (Reduction name forall' prem concl)
+  return (Reduction name forall' prem' concl')
 
 
 

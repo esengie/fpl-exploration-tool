@@ -69,6 +69,8 @@ FunSymsH        :   FunSym                                    { [$1] }
                 |   FunSym FunSymsH                           { $1 : $2 }
 
 FunSym          :   ident ':' SortsLeft '->' ident            { FunSym $1 $3 (SimpleSort $5) }  -- hacky
+                |   ident ':' ident                           { FunSym $1 [] (SimpleSort $3) }
+
 SortsLeft       :   SortLeft                                  { [$1] }
                 |   SortLeft '*' SortsLeft                    { $1 : $3 }
 SortLeft        :   ident                                     { SimpleSort $1 }
@@ -93,6 +95,8 @@ Reduction       :   ident '=' '\t' Forall '\t'
                       '|---' JudgeReduct '/t' '/t'            { Reduction $1 $4 [] $7 }
 
 Forall          :   V ForallVars                              { $2 }
+                |   V                                         { [] } -- will fix later if at all
+
 ForallVars      :   ForallVar                                 { [$1] }
                 |   ForallVar ',' ForallVars                  { $1 : $3 }
 ForallVar       :   VarName ':' ident                         { ($1 , SimpleSort $3) }  -- hacky
@@ -133,11 +137,11 @@ Term            :   ident                                     { Var $1 }
                 |   ident '(' CommaSepTerms ')'               { FunApp $1 $3 }
                 |   Term '[' ident ':=' Term ']'              { Subst $1 $3 $5 }
 
-CombTerm        :   Term                                      {  $1  }
+CombTerm        :   Term                                      {  ([], $1)  }
                 |   InnerTerm                                 {  $1  }
 
-InnerTerm       :   ident '.' Term                            { TermInCtx [$1] $3}
-                |   '(' SpaceSepNames ')' '.' Term            { TermInCtx $2 $5}
+InnerTerm       :   ident '.' Term                            { ([$1], $3) }
+                |   '(' SpaceSepNames ')' '.' Term            { ($2, $5) }
 
 CommaSepTerms   :   CombTerm                                  { [$1] }
                 |   CombTerm ',' CommaSepTerms                { $1 : $3 }

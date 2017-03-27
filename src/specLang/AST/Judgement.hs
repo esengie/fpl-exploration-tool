@@ -1,33 +1,40 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module AST.Judgement(
   Judgement(..),
   isEqJudgement,
   isRedJudgement,
-  showCtx
+  showCtx,
+  jContext
   )
   where
 
 import Data.List(intercalate)
+import Control.Lens
 
 import AST.Term
 
 data Judgement =
   Statement {
-  jContext   :: [(VarName, Term)]
+  _jContext   :: [(VarName, Term)]
 , jTerm :: Term
 , jType :: Maybe Term    -- def as maybe
 } |
   Equality {
-  jContext   :: [(VarName, Term)]
+  _jContext   :: [(VarName, Term)]
 , jLeft  :: Term
 , jRight  :: Term
 , jType :: Maybe Term -- equality t1 = t2 : Maybe t3
 } |
   Reduct {
-  jContext   :: [(VarName, Term)]
+  _jContext   :: [(VarName, Term)]
 , jLeft  :: Term
 , jRight  :: Term
 , jType :: Maybe Term
 } deriving (Eq)
+
+makeLenses ''Judgement
+
 
 instance Show Judgement where
   show (Statement ctx tm Nothing) = concat [
@@ -50,10 +57,10 @@ showEqRed :: Judgement -> String -> String
 showEqRed a@Statement{} _ = show a
 showEqRed a eq = case jType a of
   Nothing -> concat [
-      showCtx showVnTm (jContext a),
+      showCtx showVnTm (a^.jContext),
       "|- ", show (jLeft a), eq, show (jRight a)]
   Just ty -> concat [
-      showCtx showVnTm (jContext a),
+      showCtx showVnTm (a^.jContext),
       "|- ", show (jLeft a), eq, show (jRight a), ": ", show ty]
 
 isEqJudgement :: Judgement -> Bool

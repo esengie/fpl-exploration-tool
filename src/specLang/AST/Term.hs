@@ -5,6 +5,7 @@ module AST.Term(
   ContextDepth(..),
   DefaultErr(..),
   Sort(..),
+  Ctx(..),
   FunctionalSymbol(..),
   MetaVar(..),
   Term(..),
@@ -21,7 +22,8 @@ module AST.Term(
   isFunSym,
   isVar,
   allUnique,
-  isSubset
+  isSubset,
+  changeError
 ) where
 
 import qualified Data.Set as Set
@@ -33,8 +35,14 @@ type Name = String
 type ContextDepth = Int
 type DefaultErr = Either String
 
+changeError :: String -> DefaultErr a -> DefaultErr a
+changeError msg (Left x) = Left (msg ++ "\n\t" ++ x)
+changeError _ x = x
+
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq)
+
+type Ctx = [VarName]
 
 bracket :: String -> String
 bracket s = "(" ++ s ++ ")"
@@ -79,6 +87,7 @@ data FunctionalSymbol = FunSym {
 } deriving (Eq)
 
 instance Show FunctionalSymbol where
+  show (FunSym nm [] res) = nm ++ ": " ++ show res
   show (FunSym nm args res) =
     nm ++ ": " ++ intercalate "*" (map show args) ++ "->" ++ show res
 
@@ -96,15 +105,16 @@ instance Show MetaVar where
   show (MetaVar x y) = showCtxVar x y
 
 data Term = Var VarName              -- xyz
-          | TermInCtx [VarName] Term -- (x y).asd
-          | FunApp Name [Term]
+          | Meta MetaVar
+          | FunApp Name [(Ctx, Term)]
           | Subst Term VarName Term
     deriving (Eq)
 
 instance Show Term where
   show (Var nm) = nm
-  show (TermInCtx x y) = showCtxVar x (show y)
-  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map show args))
+  show (Meta vr) = mName vr ++ "-m"
+  show (FunApp nm []) = nm ++ "-f"
+  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map (\(x, y) -> showCtxVar x (show y)) args))
   show (Subst into vn what) = show into ++ "[" ++ vn ++ ":= " ++ show what ++ "]"
 
 isFunSym :: Term -> Bool
@@ -113,7 +123,6 @@ isFunSym _ = False
 
 isVar :: Term -> Bool
 isVar Var{} = True
-isVar (TermInCtx _ Var{}) = True
 isVar _ = False
 
 lookupName :: (a -> Name) -> Name -> [a] -> DefaultErr a
