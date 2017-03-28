@@ -8,7 +8,6 @@ module Lexer(
   , Alex(..)
   , runAlex'
   , alexMonadScan
-  , alexError'
   , mainLex
   ) where
 
@@ -23,17 +22,17 @@ import Control.Monad ( liftM, forever, when )
 
 $digit = 0-9
 $alpha = [A-Za-z]
-@indent = "  " | \t
 
 tokens :-
-  "--".*                                ; -- kill comments
+  "--" .*                               ; -- kill comments
   $digit+                               { lex (TInt . read) }
-  $alpha [$alpha $digit \_ \'\-]*       { lex  TIdent     }
+  $alpha [$alpha $digit \_ \' \-]*      { lex  TIdent       }
   "."                                   { lex' TDot         }
+  ","                                   { lex' TComma       }
   "("                                   { lex' TLParen      }
   ")"                                   { lex' TRParen      }
-  [\ \t\f\v]+                           ;
-  \n (@indent)* "--".*                  ; -- kill comments some more
+  ";"                                   { lex' TSemi        }
+  $white+                               ;
 
 {
 
@@ -45,6 +44,7 @@ data TokenClass
   = TInt Int
   | TIdent String
   | TDot
+  | TSemi
   | TComma
   | TLParen
   | TRParen
@@ -57,7 +57,6 @@ data AlexUserState = AlexUserState {
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState "<unknown>"
-
 
 alexEOF :: Alex Token
 alexEOF = do
@@ -74,24 +73,24 @@ lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
 lex' :: TokenClass -> AlexAction Token
 lex' = lex . const
 
--- Signal an error, including a commonly accepted source code position.
-alexError' :: AlexPosn -> String -> Alex a
-alexError' (AlexPn _ l c) msg = do
-  fp <- getFilePath
-  alexError (fp ++ ":" ++ show l ++ ":" ++ show c ++ ": " ++ msg)
-
 -- A variant of runAlex, keeping track of the path of the file we are lexing.
 runAlex' :: FilePath -> String -> Alex a -> Either String a
-runAlex' fp input a = runAlex processedInput (setFilePath fp >> a)
-  where processedInput = intercalate "\n" $ map (\l -> if (not $ all isSpace l) then l else "--") (lines input)
+runAlex' fp input a = runAlex input (setFilePath fp >> a)
+
+processInput input = intercalate "\n" $ filter (\l -> not $ all isSpace l)
+                                     (lines input)
+
+kkk = do
+  f <- readFile "examples/codeOfGenLangs/depTypedLC.lc"
+  putStr f
 
 readtoks:: Alex [Token]
 readtoks = do
-            t<-alexMonadScan
+            t <- alexMonadScan
             case t of
               (Token _ TEOF) -> return [t]
               _ -> do
-                rest<- readtoks
+                rest <- readtoks
                 return (t:rest)
 
 detok (Token _ d) = d
@@ -108,7 +107,7 @@ mainLex' input = printHelper (tokenize input)
 mainLex :: FilePath -> IO ()
 mainLex file = do
   str <- readFile file
-  putStr . concat $ mainLex' (show file)
+  putStr . concat $ mainLex' file
 
 
 -- For nice parser error messages.
@@ -119,6 +118,7 @@ unLex TComma = ","
 unLex TDot = "."
 unLex TLParen = "("
 unLex TRParen = ")"
+unLex TSemi = ";\n"
 unLex TEOF = "<EOF>"
 
 getFilePath :: Alex FilePath

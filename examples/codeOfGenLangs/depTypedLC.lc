@@ -1,3 +1,2 @@
-lam(S , x.t)
 
---
+lam(S, x.t);

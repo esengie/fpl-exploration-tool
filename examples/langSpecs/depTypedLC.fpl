@@ -5,6 +5,7 @@ FunctionalSymbols :
   bool : ty
   false : tm
   true : tm
+  if : (tm, 0) * (tm, 0) * (tm, 0) -> tm
   pi : (ty , 0) * (ty , 1) -> ty  -- sigma : (ty , 0) * (ty , 1) -> ty
   lam : (ty , 0) * (tm , 1) -> tm
   app : (tm , 0) * (tm , 0) -> tm
@@ -21,6 +22,10 @@ Axioms :
   Bool =
     forall
       |--- |- bool def
+
+  If-then =
+    forall t : tm, t1 : tm, t2 : tm, A : ty
+      |- t1 : A, |- t2 : A, |- t : Bool |---  |- if(t, f, g) : A 
 
   K-Pi =
     forall T1 : ty , x.T2 : ty
