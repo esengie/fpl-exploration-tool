@@ -1,2 +1,1 @@
-
-lam(S, x.t);
+lam(bool, x.x) : pi(bool, x.x)
