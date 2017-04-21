@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, TemplateHaskell #-}
 
--- module Generator
---   where
+module GenTemplate
+  where
 
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)
@@ -9,12 +9,20 @@ import Data.Functor.Classes
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Error.Class (throwError)
-import Data.Traversable
+import Data.Traversable (fmapDefault, foldMapDefault)
+import Data.Traversable.Deriving
 import Bound
+
+type TC    = Either String
+type Ctx a = a -> TC (Type a)
+
+consCtx :: Type a -> Ctx a -> Ctx (Var () a)
+consCtx ty ctx (B ()) = pure (F <$> ty)
+consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
 data Term a
   = Var a
-  | Star
+  | TyK
   | True
   | False
   | Bool
@@ -37,24 +45,14 @@ instance Applicative Term where
 
 instance Functor Term  where fmap       = fmapDefault
 instance Foldable Term where foldMap    = foldMapDefault
-
-instance Traversable Term where
-  traverse f (Var a)    = Var <$> f a
-  traverse _ Star       = pure Star
-  traverse _ True       = pure True
-  traverse _ False      = pure False
-  traverse _ Bool       = pure Bool
-  traverse f (If a t x y) = If <$> traverse f a <*> traverse f t <*> traverse f x <*> traverse f y
-  traverse f (App x y)  = App <$> traverse f x <*> traverse f y
-  traverse f (Lam ty e) = Lam <$> traverse f ty <*> traverse f e
-  traverse f (Pi ty e)  = Pi <$> traverse f ty <*> traverse f e
+deriveTraversable ''Term
 
 instance Monad Term where
   Var a     >>= f = f a
-  Star      >>= f = Star
+  TyK       >>= f = TyK
   Bool      >>= f = Bool
   True      >>= f = True
-  False      >>= f = False
+  False     >>= f = False
   If a t x y >>= f = If (a >>>= f) (t >>= f) (x >>= f) (y >>= f)
   Lam ty t  >>= f = Lam (ty >>= f) (t >>>= f)
   Pi  ty t  >>= f = Pi  (ty >>= f) (t >>>= f)
@@ -64,7 +62,7 @@ instance Monad Term where
 rnf :: Term a -> Term a
 rnf = \case
   Var a    -> Var a
-  Star     -> Star
+  TyK      -> TyK
   True     -> True
   False    -> False
   Bool     -> Bool
@@ -78,48 +76,41 @@ rnf = \case
     (Lam ty t1, t2) -> rnf (instantiate1 t2 t1)
     (f, x)  -> App f x
 
-type TC    = Either String
-type Cxt a = a -> TC (Type a)
-
-consCxt :: Type a -> Cxt a -> Cxt (Var () a)
-consCxt ty cxt (B ()) = pure (F <$> ty)
-consCxt ty cxt (F a)  = (F <$>) <$> cxt a
-
-check :: (Show a, Eq a) => Cxt a -> Type a -> Term a -> TC ()
-check cxt want t = do
-  have <- infer cxt t
+check :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
+check ctx want t = do
+  have <- infer ctx t
   when (have /= want) $ Left $
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
-infer :: (Show a, Eq a) => Cxt a -> Term a -> TC (Type a)
-infer cxt = \case
-  Var a -> cxt a
-  Star  -> throwError "Can't have star : star"
+infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
+infer ctx = \case
+  Var a -> ctx a
+  TyK  -> throwError "Can't have star : star"
   True -> pure Bool
   False -> pure Bool
-  Bool -> pure Star
+  Bool -> pure TyK
   If a t x y -> do
-    check cxt Bool t
-    check (consCxt Bool cxt) Star (fromScope a)
-    check cxt (rnf (instantiate1 True a)) x
-    check cxt (rnf (instantiate1 False a)) y
+    check ctx Bool t
+    check (consCtx Bool ctx) TyK (fromScope a)
+    check ctx (rnf (instantiate1 True a)) x
+    check ctx (rnf (instantiate1 False a)) y
     pure $ rnf (instantiate1 t a)
   Lam ty t -> do
-    check cxt Star ty
+    check ctx TyK ty
     let ty' = rnf ty
-    Pi ty' . toScope <$> infer (consCxt ty' cxt) (fromScope t)
+    Pi ty' . toScope <$> infer (consCtx ty' ctx) (fromScope t)
   Pi ty t -> do
-    check cxt Star ty
-    check (consCxt (rnf ty) cxt) Star (fromScope t)
-    pure Star
+    check ctx TyK ty
+    check (consCtx (rnf ty) ctx) TyK (fromScope t)
+    pure TyK
   App f x ->
-    infer cxt f >>= \case
+    infer ctx f >>= \case
       Pi ty t -> do
-        check cxt ty x
+        check ctx ty x
         pure $ rnf (instantiate1 x t)
       _ -> Left "can't apply non-function"
 
-emptyCtx :: Cxt a
+emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 
 -- infer in the empty context
@@ -141,7 +132,7 @@ iff v ty t x y = If (abstract1 v ty) t x y
 a ==> b = Pi a (Scope $ fmap (F . pure) b)
 infixr 5 ==>
 
-fromList :: Eq a => [(a, Type a)] -> Cxt a
+fromList :: Eq a => [(a, Type a)] -> Ctx a
 fromList [] = emptyCtx
 fromList ((x,t):xs) = \y -> if (x == y)
                               then return t

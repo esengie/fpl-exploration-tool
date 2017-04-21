@@ -46,7 +46,7 @@ Reductions :
       x : A |- b : T, |- a : A |--- |- app(lam(A , x.b) , a) => b [x := a] : T[x:=a]
 
   IfRed =
-    forall
+    forall x.A : ty, f : tm , g : tm
       |--- |- if(x.A, true, f, g) => f : A[x:=true]
 
 --
