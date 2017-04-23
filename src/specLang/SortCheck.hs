@@ -2,7 +2,8 @@ module SortCheck (
   module X,
   sortCheck,
   runSortCheck,
-  mainCheck
+  mainCheck,
+  sortCheckIO
 ) where
 
 import Control.Monad.Trans.State.Lazy
@@ -33,15 +34,16 @@ runSortCheck langSp = do
 
 mainCheck :: FilePath -> IO ()
 mainCheck file = do
-  str <- readFile file
-  let lang = parseLang (show file) str
-  putStrLn $ case runSortCheck lang of
+  st <- sortCheckIO file
+  putStrLn $ case st of
     Left err -> "hmm " ++ err
     Right x -> show x
 
-
-
-
+sortCheckIO :: FilePath -> IO (Either SortError SymbolTable)
+sortCheckIO file = do
+  str <- readFile file
+  let lang = parseLang file str
+  return $ runSortCheck lang
 
 
 
