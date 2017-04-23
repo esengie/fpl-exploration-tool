@@ -18,10 +18,12 @@ type GenError = String
 type ErrorM = Either GenError
 type GenM = ReaderT SymbolTable (StateT [Decl] (ErrorM))
 
+-- take definition of a thing and replace with modified, better one
 genTerms :: GenM ()
 genTerms = do
-  var <- getDecl "rnf"
-  lift $ put [var]
+  lst <- lift get
+  (var, n) <- getDecl "rnf"
+  lift $ put (replace n var lst)
 
 genMonad :: GenM ()
 genMonad = return ()
@@ -29,16 +31,20 @@ genMonad = return ()
 genInfer :: GenM ()
 genInfer = return ()
 
+type Pos = Int
 -- looking using prettyPrint (yup)
-getDecl :: String -> GenM Decl
+getDecl :: String -> GenM (Decl, Pos)
 getDecl nm = do
   decl <- lift get
-  lift . lift $ getDecl' nm decl
-  where getDecl' :: String -> [Decl] -> ErrorM Decl
-        getDecl' nm (TypeSig{}:xs) = getDecl' nm xs
-        getDecl' nm (x:xs) | take (length nm) (prettyPrint x) == nm = return x
-                           | otherwise = getDecl' nm xs
-        getDecl' nm [] = throwError $ "Haven't found " ++ nm
+  lift . lift $ getDecl' 0 nm decl
+  where getDecl' :: Pos -> String -> [Decl] -> ErrorM (Decl, Pos)
+        getDecl' n nm (TypeSig{}:xs) = getDecl' (n+1) nm xs
+        getDecl' n nm (x:xs) | take (length nm) (prettyPrint x) == nm = return (x,n)
+                           | otherwise = getDecl' (n+1) nm xs
+        getDecl' _ nm [] = throwError $ "Haven't found " ++ nm
+
+replace :: Pos -> a -> [a] -> [a]
+replace n a lst = (take (n-1) lst) ++ [a] ++ (drop n lst)
 --------------------------------------------------------------------------------
 -- Main place
 --------------------------------------------------------------------------------
