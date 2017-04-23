@@ -2,11 +2,7 @@
 
 import Language.Haskell.Exts.Simple
 
-data Term a
-  = Var a
-  | Bool
-  | Lam (Type a) (Scope () Term a)
-  | If (Scope () Type a) (Term a) (Term a) (Term a)
+data Term a = Var a | Bool | Lam (Type a) (Scope () Term a)
 
 instance Monad Term where
   Var a     >>= f = f a
