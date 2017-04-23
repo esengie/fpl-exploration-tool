@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- May change name and add exports etc.
 module GenTemplate
@@ -53,9 +53,8 @@ check' f ctx want t = do
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
 infer :: Show a => TermEq a -> Ctx a -> Term a -> TC (Type a)
-infer feq ctx = \case
-  Var a -> ctx a
-  TyDef  -> throwError "Can't have def : def"
+infer feq ctx (Var a) = ctx a
+infer feq ctx TyDef   = throwError "Can't have def : def"
 
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
@@ -82,9 +81,8 @@ checkNf ctx want t = check' (\x y -> nf x == nf y) ctx want t
 
 -- from reductions
 nf :: Term a -> Term a
-nf = \case
-  Var a    -> Var a
-  TyDef      -> TyDef
+nf (Var a) = Var a
+nf TyDef   = TyDef
 
 
 

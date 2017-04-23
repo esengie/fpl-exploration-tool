@@ -10,6 +10,7 @@ import Control.Monad.Trans.State.Lazy
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
+import Debug.Trace
 
 import qualified Data.Char as Char
 import qualified Data.Set as Set
@@ -50,13 +51,20 @@ genTerms :: GenM ()
 genTerms = do
   lst <- lift get
   (_ , n) <- getDecl "data Term"
+
   st <- ask
   let sortsWO_tms = Set.toList $ (Set.delete tmName (st^.depSorts)) `Set.union` (st^.simpleSorts)
   let sorts = (\x -> qualConDecl $ FunSym (caps x ++ "Def") [] varSort) <$> sortsWO_tms
   let funSymbs = map qualConDecl $ Map.elems (st^.SortCheck.funSyms) -- this is Lens
   let qConDecls = (ctorVarA : sorts) ++ funSymbs
   let termT = termA qConDecls Nothing
-  lift $ put (replace n termT lst)
+  lift $ put (replace n [termT] lst)
+
+  lst' <- lift get
+  (_, n')<- getDecl "type Type"
+  let sortTypes = map typeDecl sortsWO_tms
+  lift $ put (replace n' sortTypes lst')
+
 
 genMonad :: GenM ()
 genMonad = return ()
@@ -89,7 +97,7 @@ gen template spec = do
       case m of
         ParseFailed _ msg -> putStrLn $ "Parse error: " ++ msg
         ParseOk (Left msg) -> putStrLn $ "Codegen error: " ++ msg
-        ParseOk (Right m') -> (putStrLn . prettyPrint) (getDecls m' !! 0)
+        ParseOk (Right m') -> (putStrLn . prettyPrint) (m')
 
 fileee = "src/langGenerator/GeneratorTemplates/LangTemplate.hs"
 fileee' = "src/langGenerator/experims.hs"
@@ -133,8 +141,9 @@ caps :: String -> String
 caps [] = []
 caps x = Char.toUpper (head x) : tail x
 
-replace :: Pos -> a -> [a] -> [a]
-replace n a lst = (take (n-1) lst) ++ [a] ++ (drop n lst)
+replace :: Pos -> [a] -> [a] -> [a]
+-- replace 0 xs lst = xs ++ (drop 1 lst)
+replace n xs lst = (take n lst) ++ xs ++ (drop (n + 1) lst)
 
 
 

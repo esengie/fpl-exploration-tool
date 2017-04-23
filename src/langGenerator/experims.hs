@@ -4,6 +4,8 @@ import Language.Haskell.Exts.Simple
 
 data Term a = Var a | Bool | Lam (Type a) (Scope () Term a)
 
+type Type = Term
+
 instance Monad Term where
   Var a     >>= f = f a
   TyK       >>= f = TyK
