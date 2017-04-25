@@ -57,6 +57,41 @@ infer ctx (App f x) = do
 
 
 
+InstDecl Nothing
+        (IRule Nothing Nothing
+               (IHApp (IHCon (UnQual (Ident "Monad"))) (TyCon (UnQual (Ident "Term")))))
+        (Just [InsDecl (FunBind [
+                                InfixMatch "Var"
+                                           (Symbol ">>=")
+                                           [PVar (Ident "f")]
+                                           (UnGuardedRhs (App (Var (UnQual (Ident "f"))) (Var (UnQual (Ident "a")))))
+                                           Nothing,
+                                InfixMatch (PApp (UnQual (Ident "TyK")) [])
+                                           (Symbol ">>=")
+                                           [PVar (Ident "f")]
+                                           (UnGuardedRhs (Con (UnQual (Ident "TyK"))))
+                                           Nothing,
+                                InfixMatch (PApp (UnQual (Ident "If")) [PVar (Ident "a"),
+                                                                        PVar (Ident "t"),
+                                                                        PVar (Ident "x"),
+                                                                        PVar (Ident "y")])
+                                           (Symbol ">>=")
+                                           [PVar (Ident "f")]
+                                           (UnGuardedRhs (App (App (App (App (Con (UnQual (Ident "If")))
+                                                                        (Paren (InfixApp (Var (UnQual (Ident "a")))
+                                                                                         (QVarOp (UnQual (Symbol ">>>=")))
+                                                                                         (Var (UnQual (Ident "f"))))))
+                                                                        (Paren (InfixApp (Var (UnQual (Ident "t")))
+                                                                                         (QVarOp (UnQual (Symbol ">>=")))
+                                                                                         (Var (UnQual (Ident "f"))))))
+                                                                    (Paren (InfixApp (Var (UnQual (Ident "x")))
+                                                                                     (QVarOp (UnQual (Symbol ">>=")))
+                                                                                     (Var (UnQual (Ident "f"))))))
+                                                              (Paren (InfixApp (Var (UnQual (Ident "y")))
+                                                                               (QVarOp (UnQual (Symbol ">>=")))
+                                                                               (Var (UnQual (Ident "f")))))))
+                                            Nothing])])
+
 
 
 ---

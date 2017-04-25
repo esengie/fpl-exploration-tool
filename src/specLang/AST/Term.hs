@@ -13,6 +13,7 @@ module AST.Term(
   tyName,
   tmName,
   getSortName,
+  getSortDepth,
   addToCtx,
   lowerCtx,
   zero,
@@ -63,6 +64,10 @@ tmName = "tm"
 getSortName :: Sort -> SortName
 getSortName (DepSort nm _) = nm
 getSortName (SimpleSort nm) = nm
+
+getSortDepth :: Sort -> ContextDepth
+getSortDepth (SimpleSort _) = 0
+getSortDepth (DepSort _ x) = x
 
 zero :: Sort -> Sort
 zero (DepSort nm _) = DepSort nm 0
