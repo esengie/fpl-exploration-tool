@@ -31,22 +31,21 @@ rnf (App t1 t2) = case (rnf t1, rnf t2) of
 infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
 infer ctx (Var a) = ctx a
 infer ctx TyK  = throwError "Can't have star : star"
-infer ctx True = pure Bool
 infer ctx False = pure Bool
 infer ctx Bool = pure TyK
 infer ctx (If a t x y) = do
   check ctx Bool t
-  check (consCtx Bool ctx) TyK (fromScope a)
+  check (consCtx (nf Bool) ctx) TyK (fromScope a)
   check ctx (instantiate1 True a) x
-  check ctx (instantiate1 False a) y
-  pure $ instantiate1 t a
+  pure $ nf (instantiate1 t a)
 infer ctx (Lam ty t) = do
   check ctx TyK ty
-  Pi ty . toScope <$> infer (consCtx ty ctx) (fromScope t)
-infer ctx (Pi ty t) = do
-  check ctx TyK ty
-  check (consCtx ty ctx) TyK (fromScope t)
+  Pi (nf ty) . toScope <$> infer (consCtx (nf ty) ctx) (fromScope t)
   pure TyK
+infer ctx (Pi ty t) = do
+    check ctx TyK ty
+    check (consCtx (nf ty) ctx) TyK (fromScope t)
+    pure TyK
 infer ctx (App f x) = do
   v <- infer ctx f
   case v of
@@ -57,41 +56,23 @@ infer ctx (App f x) = do
 
 
 
-InstDecl Nothing
-        (IRule Nothing Nothing
-               (IHApp (IHCon (UnQual (Ident "Monad"))) (TyCon (UnQual (Ident "Term")))))
-        (Just [InsDecl (FunBind [
-                                InfixMatch "Var"
-                                           (Symbol ">>=")
-                                           [PVar (Ident "f")]
-                                           (UnGuardedRhs (App (Var (UnQual (Ident "f"))) (Var (UnQual (Ident "a")))))
-                                           Nothing,
-                                InfixMatch (PApp (UnQual (Ident "TyK")) [])
-                                           (Symbol ">>=")
-                                           [PVar (Ident "f")]
-                                           (UnGuardedRhs (Con (UnQual (Ident "TyK"))))
-                                           Nothing,
-                                InfixMatch (PApp (UnQual (Ident "If")) [PVar (Ident "a"),
-                                                                        PVar (Ident "t"),
-                                                                        PVar (Ident "x"),
-                                                                        PVar (Ident "y")])
-                                           (Symbol ">>=")
-                                           [PVar (Ident "f")]
-                                           (UnGuardedRhs (App (App (App (App (Con (UnQual (Ident "If")))
-                                                                        (Paren (InfixApp (Var (UnQual (Ident "a")))
-                                                                                         (QVarOp (UnQual (Symbol ">>>=")))
-                                                                                         (Var (UnQual (Ident "f"))))))
-                                                                        (Paren (InfixApp (Var (UnQual (Ident "t")))
-                                                                                         (QVarOp (UnQual (Symbol ">>=")))
-                                                                                         (Var (UnQual (Ident "f"))))))
-                                                                    (Paren (InfixApp (Var (UnQual (Ident "x")))
-                                                                                     (QVarOp (UnQual (Symbol ">>=")))
-                                                                                     (Var (UnQual (Ident "f"))))))
-                                                              (Paren (InfixApp (Var (UnQual (Ident "y")))
-                                                                               (QVarOp (UnQual (Symbol ">>=")))
-                                                                               (Var (UnQual (Ident "f")))))))
-                                            Nothing])])
-
+FunBind [Match (Ident "infer")
+               [PVar (Ident "ctx"), PParen (PApp (UnQual (Ident "Var")) [PVar (Ident "a")])]
+               (UnGuardedRhs (App (Var (UnQual (Ident "ctx")))
+                                  (Var (UnQual (Ident "a")))))
+               Nothing,
+         Match (Ident "infer")
+               [PVar (Ident "ctx"), PApp (UnQual (Ident "TyK")) []]
+               (UnGuardedRhs (App (Var (UnQual (Ident "throwError")))
+                                  (Lit (String "Can't have star : star" "Can't have star : star"))))
+               Nothing,
+         Match () (Ident () "infer") [PVar () (Ident () "ctx"),PApp () (UnQual () (Ident () "False")) []] (UnGuardedRhs () (App () (Var () (UnQual () (Ident () "pure"))) (Con () (UnQual () (Ident () "Bool"))))) Nothing,
+         Match () (Ident () "infer") [PVar () (Ident () "ctx"),PApp () (UnQual () (Ident () "Bool")) []] (UnGuardedRhs () (App () (Var () (UnQual () (Ident () "pure"))) (Con () (UnQual () (Ident () "TyK"))))) Nothing,
+         Match () (Ident () "infer") [PVar () (Ident () "ctx"),PParen () (PApp () (UnQual () (Ident () "If")) [PVar () (Ident () "a"),PVar () (Ident () "t"),PVar () (Ident () "x"),PVar () (Ident () "y")])] (UnGuardedRhs () (Do () [Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Var () (UnQual () (Ident () "ctx")))) (Con () (UnQual () (Ident () "Bool")))) (Var () (UnQual () (Ident () "t")))),Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Paren () (App () (App () (Var () (UnQual () (Ident () "consCtx"))) (Paren () (App () (Var () (UnQual () (Ident () "nf"))) (Con () (UnQual () (Ident () "Bool")))))) (Var () (UnQual () (Ident () "ctx")))))) (Con () (UnQual () (Ident () "TyK")))) (Paren () (App () (Var () (UnQual () (Ident () "fromScope"))) (Var () (UnQual () (Ident () "a")))))),Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Var () (UnQual () (Ident () "ctx")))) (Paren () (App () (App () (Var () (UnQual () (Ident () "instantiate1"))) (Con () (UnQual () (Ident () "True")))) (Var () (UnQual () (Ident () "a")))))) (Var () (UnQual () (Ident () "x")))),Qualifier () (InfixApp () (Var () (UnQual () (Ident () "pure"))) (QVarOp () (UnQual () (Symbol () "$"))) (App () (Var () (UnQual () (Ident () "nf"))) (Paren () (App () (App () (Var () (UnQual () (Ident () "instantiate1"))) (Var () (UnQual () (Ident () "t")))) (Var () (UnQual () (Ident () "a")))))))])) Nothing,
+         Match () (Ident () "infer") [PVar () (Ident () "ctx"),PParen () (PApp () (UnQual () (Ident () "Lam")) [PVar () (Ident () "ty"),PVar () (Ident () "t")])] (UnGuardedRhs () (Do () [Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Var () (UnQual () (Ident () "ctx")))) (Con () (UnQual () (Ident () "TyK")))) (Var () (UnQual () (Ident () "ty")))),Qualifier () (InfixApp () (InfixApp () (App () (Con () (UnQual () (Ident () "Pi"))) (Paren () (App () (Var () (UnQual () (Ident () "nf"))) (Var () (UnQual () (Ident () "ty")))))) (QVarOp () (UnQual () (Symbol () "."))) (Var () (UnQual () (Ident () "toScope")))) (QVarOp () (UnQual () (Symbol () "<$>"))) (App () (App () (Var () (UnQual () (Ident () "infer"))) (Paren () (App () (App () (Var () (UnQual () (Ident () "consCtx"))) (Paren () (App () (Var () (UnQual () (Ident () "nf"))) (Var () (UnQual () (Ident () "ty")))))) (Var () (UnQual () (Ident () "ctx")))))) (Paren () (App () (Var () (UnQual () (Ident () "fromScope"))) (Var () (UnQual () (Ident () "t"))))))),Qualifier () (App () (Var () (UnQual () (Ident () "pure"))) (Con () (UnQual () (Ident () "TyK"))))])) Nothing,
+         Match () (Ident () "infer") [PVar () (Ident () "ctx"),PParen () (PApp () (UnQual () (Ident () "Pi")) [PVar () (Ident () "ty"),PVar () (Ident () "t")])] (UnGuardedRhs () (Do () [Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Var () (UnQual () (Ident () "ctx")))) (Con () (UnQual () (Ident () "TyK")))) (Var () (UnQual () (Ident () "ty")))),Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Paren () (App () (App () (Var () (UnQual () (Ident () "consCtx"))) (Paren () (App () (Var () (UnQual () (Ident () "nf"))) (Var () (UnQual () (Ident () "ty")))))) (Var () (UnQual () (Ident () "ctx")))))) (Con () (UnQual () (Ident () "TyK")))) (Paren () (App () (Var () (UnQual () (Ident () "fromScope"))) (Var () (UnQual () (Ident () "t")))))),Qualifier () (App () (Var () (UnQual () (Ident () "pure"))) (Con () (UnQual () (Ident () "TyK"))))])) Nothing,
+         Match () (Ident () "infer") [PVar () (Ident () "ctx"),PParen () (PApp () (UnQual () (Ident () "App")) [PVar () (Ident () "f"),PVar () (Ident () "x")])] (UnGuardedRhs () (Do () [Generator () (PVar () (Ident () "v")) (App () (App () (Var () (UnQual () (Ident () "infer"))) (Var () (UnQual () (Ident () "ctx")))) (Var () (UnQual () (Ident () "f")))),Qualifier () (Case () (Var () (UnQual () (Ident () "v"))) [Alt () (PApp () (UnQual () (Ident () "Pi")) [PVar () (Ident () "ty"),PVar () (Ident () "t")]) (UnGuardedRhs () (Do () [Qualifier () (App () (App () (App () (Var () (UnQual () (Ident () "check"))) (Var () (UnQual () (Ident () "ctx")))) (Var () (UnQual () (Ident () "ty")))) (Var () (UnQual () (Ident () "x")))),Qualifier () (InfixApp () (Var () (UnQual () (Ident () "pure"))) (QVarOp () (UnQual () (Symbol () "$"))) (App () (App () (Var () (UnQual () (Ident () "instantiate1"))) (Var () (UnQual () (Ident () "x")))) (Var () (UnQual () (Ident () "t")))))])) Nothing,Alt () (PWildCard ()) (UnGuardedRhs () (App () (Con () (UnQual () (Ident () "Left"))) (Lit () (String () "can't apply non-function" "can't apply non-function")))) Nothing]
+         )])) Nothing]
 
 
 ---

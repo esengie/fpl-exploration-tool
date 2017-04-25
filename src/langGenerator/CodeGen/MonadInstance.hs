@@ -1,6 +1,7 @@
 module CodeGen.MonadInstance(
   genMonad,
-  vars
+  vars,
+  funToPat
 ) where
 
 import Control.Monad.Trans.Reader
@@ -53,7 +54,7 @@ genMonad :: GenM ()
 genMonad = do
   st <- ask
   let sorts = (\x -> FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
-  let matches = map (\f -> infixMatch f (boundBind f)) $ Map.elems (st^.SortCheck.SymbolTable.funSyms) ++ sorts
+  let matches = (\f -> infixMatch f (boundBind f)) <$> Map.elems (st^.SortCheck.SymbolTable.funSyms) ++ sorts
   let monadInst = monadTerm (bindVarA : matches)
 
   lst <- lift get

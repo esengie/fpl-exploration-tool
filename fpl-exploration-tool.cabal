@@ -18,6 +18,7 @@ library
                      , src/langGenerator
                      , src/specLang/parsLex
   exposed-modules:
+  --CodeGen
   --SortCheck
   build-depends:       base >= 4.7 && < 5
                      , array == 0.5.1.*

@@ -1,7 +1,7 @@
 module CodeGen(
-  module X,
   gen,
-  gene
+  gene,
+  module X
 ) where
 
 import Control.Monad.Trans.Reader
@@ -35,7 +35,7 @@ gen template spec = do
       case m of
         ParseFailed _ msg -> putStrLn $ "Parse error: " ++ msg
         ParseOk (Left msg) -> putStrLn $ "Codegen error: " ++ msg
-        ParseOk (Right m') -> (putStrLn . prettyPrint) (getDecls m' !! 2)
+        ParseOk (Right m') -> (putStrLn . prettyPrint) (m')
 
 fileee = "src/langGenerator/GeneratorTemplates/LangTemplate.hs"
 fileee' = "src/langGenerator/experims.hs"

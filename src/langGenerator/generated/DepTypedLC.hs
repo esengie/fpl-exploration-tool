@@ -92,7 +92,7 @@ infer ctx (If a t x y) = do
     check (consCtx Bool ctx) TyK (fromScope a)
     check ctx (instantiate1 True a) x
     check ctx (instantiate1 False a) y
-    pure $ instantiate1 t a
+    pure . nf $ instantiate1 t a
 infer ctx (Lam ty t) = do
     check ctx TyK ty
     Pi ty . toScope <$> infer (consCtx ty ctx) (fromScope t)
@@ -105,7 +105,7 @@ infer ctx (App f x) = do
     case v of
       Pi ty t -> do
         check ctx ty x
-        pure $ instantiate1 x t
+        pure . nf $ instantiate1 x t
       _ -> Left "can't apply non-function"
 
 emptyCtx :: Ctx a
