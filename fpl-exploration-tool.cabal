@@ -15,8 +15,9 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src/specLang
+                     , src/langGenerator
                      , src/specLang/parsLex
-  exposed-modules:    
+  exposed-modules:
   --SortCheck
   build-depends:       base >= 4.7 && < 5
                      , array == 0.5.1.*
