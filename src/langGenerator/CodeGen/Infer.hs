@@ -34,8 +34,7 @@ genInfer = do
 
   lst <- lift get
   (_ , n) <- getDecl "infer"
-  lift $ put (replace n [funInfer lefts rights] lst)
-
+  lift $ put lst{decls = replace n [funInfer lefts rights] (decls lst)}
 
 
 

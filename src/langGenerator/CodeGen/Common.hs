@@ -16,12 +16,16 @@ import AST.Term hiding (Var)
 type GenError = String
 type Pos = Int
 type ErrorM = Either GenError
-type GenM = ReaderT SymbolTable (StateT [Decl] (ErrorM))
+data CodeGen = Gen {
+    count :: Int,
+    decls :: [Decl]
+  }
+type GenM = ReaderT SymbolTable (StateT CodeGen (ErrorM))
 
 -- looking using prettyPrint (yup)
 getDecl :: String -> GenM (Decl, Pos)
 getDecl nm = do
-  decl <- lift get
+  decl <- lift $ gets decls
   lift . lift $ getDecl' 0 nm decl
   where getDecl' :: Pos -> String -> [Decl] -> ErrorM (Decl, Pos)
         getDecl' n nm (TypeSig{}:xs) = getDecl' (n+1) nm xs
@@ -32,7 +36,7 @@ getDecl nm = do
 --------------------------------------------------------------------------------
 
 runGenM :: GenM a -> SymbolTable -> Module -> Either GenError a
-runGenM mon st md = evalStateT (runReaderT mon st) (getDecls md)
+runGenM mon st md = evalStateT (runReaderT mon st) (Gen 1 (getDecls md))
 
 getDecls :: Module -> [Decl]
 getDecls (Module _ _ _ x) = x

@@ -59,7 +59,7 @@ genMonad = do
 
   lst <- lift get
   (_, n)<- getDecl "instance Monad Term"
-  lift $ put (replace n [monadInst] lst)
+  lift $ put lst{decls = replace n [monadInst] (decls lst)}
 
 
 

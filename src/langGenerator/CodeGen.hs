@@ -51,7 +51,7 @@ buildModule (Module a b c _) = do
   genSortTypes
   genMonad
   genInfer
-  decl <- lift get
+  decl <- lift $ gets decls
   return (Module a b c decl)
 buildModule x = return x
 

@@ -54,7 +54,7 @@ genTerms = do
   -- Generate data Term a = ...
   lst <- lift get
   (_ , n) <- getDecl "data Term"
-  lift $ put (replace n [termT] lst)
+  lift $ put lst{decls = (replace n [termT] (decls lst))}
 --------------------------------------------------------------------------------
 
 -- "Type" -> type Type = Term
@@ -68,7 +68,7 @@ genSortTypes = do
   lst <- lift get
   (_, n)<- getDecl "type Type"
   let sortTypes = map typeDecl (sortsWO_tm st)
-  lift $ put (replace n sortTypes lst)
+  lift $ put lst{decls = (replace n sortTypes (decls lst))}
 
 
 
