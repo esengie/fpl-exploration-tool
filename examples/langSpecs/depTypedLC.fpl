@@ -5,10 +5,10 @@ FunctionalSymbols :
   bool : ty
   false : tm
   true : tm
-  if : (tm, 0) * (tm, 0) * (tm, 0) -> tm
-  pi : (ty , 0) * (ty , 1) -> ty
+  if : (ty, 1) * (tm, 0) * (tm, 0) * (tm, 0) -> tm
   lam : (ty , 0) * (tm , 1) -> tm
   app : (tm , 0) * (tm , 0) -> tm
+  pi : (ty, 0) * (ty, 1) -> ty
   -- sigma : (ty , 0) * (ty , 1) -> ty
 
 Axioms :
@@ -26,25 +26,27 @@ Axioms :
 
   If-then =
     forall t : tm, t1 : tm, t2 : tm, x.A : ty
-      |- t1 : A[x:=true], |- t2 : A[x:=false], |- t : bool |---  |- if(t, t1, t2) : A[x:=t]
+      x : bool |- A def, |- t1 : A[x:=true], |- t2 : A[x:=false], |- t : bool |--- |- if(x.A, t, t1, t2) : A[x:=t]
 
   K-Pi =
     forall T1 : ty , x.T2 : ty
       x : T1 |- T2 def |--- |- pi(T1, x.T2) def
 
-  TAbs =  -- can't have a "-" in axiom names
+  TAbs =
     forall S : ty , x.T : ty , x.t : tm
       x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
 
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
-      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2]
+      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2]   
 
 Reductions :
   Beta =
-    forall x.b : tm, A : ty, a : tm
-      |--- |- app(lam(A , x.b) , a) => b [x := a]
+    forall x.b : tm, A : ty, a : tm, x.T : ty
+      x : A |- b : T, |- a : A |--- |- app(lam(A , x.b) , a) => b [x := a] : T[x:=a]
 
-
+  IfRed =
+    forall x.A : ty, f : tm , g : tm
+      |--- |- if(x.A, true, f, g) => f : A[x:=true]
 
 --

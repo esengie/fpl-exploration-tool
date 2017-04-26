@@ -1,6 +1,6 @@
 module Main where
 
-import SortCheck
+-- import SortCheck
 
 main :: IO ()
 main = putStr "m"
