@@ -10,7 +10,9 @@ module SortCheck.SymbolTable(
   funSyms,
   axioms,
   reductions,
-  iSymAxiomMap
+  iSymAxiomMap,
+  funToAx,
+  unJust
 ) where
 
 import Control.Monad.Trans.State.Lazy
@@ -45,6 +47,9 @@ funToAx :: SymbolTable -> AST.FunctionalSymbol -> Maybe Axiom
 funToAx table fun = do
   key <- Map.lookup (AST.name fun) (table^.iSymAxiomMap)
   Map.lookup key (table^.axioms)
+
+unJust :: Maybe a -> a
+unJust (Just a) = a
 
 unJustStr :: String -> (a -> String) -> Maybe a -> String
 unJustStr msg _ Nothing = msg

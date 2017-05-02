@@ -1,6 +1,5 @@
 module CodeGen.MonadInstance(
   genMonad,
-  vars,
   funToPat
 ) where
 
@@ -16,8 +15,6 @@ import SortCheck.SymbolTable
 import AST.Term hiding (Var)
 
 import CodeGen.Common
-
-vars = zipWith (\x y -> x ++ show y) (repeat "v") ([1..] :: [Integer])
 
 inApp a op b = Paren (InfixApp (varExp a) (qvarOp op) (varExp b))
   where qvarOp nm = QVarOp (UnQual (Symbol nm))

@@ -46,15 +46,21 @@ instance Monad Term where
 
 type TermEq a = Term a -> Term a -> Bool
 
-check' :: Show a => TermEq a -> Ctx a -> Type a -> Term a -> TC ()
-check' f ctx want t = do
-  have <- infer f ctx t
-  when (not $ f have want) $ Left $
+checkT :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
+checkT ctx want t = do
+  have <- infer ctx t
+  when (nf have /= nf want) $ Left $
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
-infer :: Show a => TermEq a -> Ctx a -> Term a -> TC (Type a)
-infer feq ctx (Var a) = ctx a
-infer feq ctx TyDef   = throwError "Can't have def : def"
+checkEq :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
+checkEq ctx want have = do
+  when (nf have /= nf want) $ Left $
+    "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
+
+
+infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
+infer ctx (Var a) = ctx a
+infer ctx TyDef   = throwError "Can't have def : def"
 
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
@@ -71,21 +77,15 @@ fromList ((x,t):xs) = \y -> if (x == y)
 
 -- infer in the empty context
 infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
-infer0 = infer (==) emptyCtx
-
-checkSimple :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
-checkSimple ctx want t = check' (==) ctx want t
-
-checkNf :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
-checkNf ctx want t = check' (\x y -> nf x == nf y) ctx want t
+infer0 = infer emptyCtx
 
 -- from reductions
 nf :: Term a -> Term a
 nf (Var a) = Var a
 nf TyDef   = TyDef
 
-
-
+abstract0 :: Monad f => f a -> Scope b f a
+abstract0 = abstract (const Nothing)
 
 
 

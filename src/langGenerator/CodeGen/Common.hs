@@ -69,4 +69,6 @@ replace n xs lst = (take n lst) ++ xs ++ (drop (n + 1) lst)
 
 dummyDecl = [((fromParseResult . parseDecl) "x = 1212312323123123213")]
 
+vars = zipWith (\x y -> x ++ show y) (repeat "v") ([1..] :: [Integer])
+
 ---

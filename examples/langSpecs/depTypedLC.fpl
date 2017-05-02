@@ -36,17 +36,29 @@ Axioms :
     forall S : ty , x.T : ty , x.t : tm
       x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
 
+  -- [Stable - Bool]
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
-      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2]   
+      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2]
+
+--   TApp =
+--     forall t1 : tm , t2 : tm , S : ty, x.T : ty, y.R : ty, y.P : tm
+--       |- lam(S, y.lam(S, x.P)) : pi(S, x.pi(T, y.R) , |- t2 : S |---- |- app(S, t1 , t2, R, P) : T[x:=t2]
+-- А в такой хитрой аксиоме строю терм y.lam(S, x.y), а затем разбираю pi чтобы достать T.
+-- Ну а так как я не знаю что из себя представляет x, то контекст я расширить не могу
+
+
 
 Reductions :
-  Beta =
+  Beta = -- not impl
     forall x.b : tm, A : ty, a : tm, x.T : ty
-      x : A |- b : T, |- a : A |--- |- app(lam(A , x.b) , a) => b [x := a] : T[x:=a]
+      x : A |- b : T, |- a : A |--- |- app(lam(A , x.b) , a) => b [x := a] : T[x:=app(a, a)]
 
   IfRed =
     forall x.A : ty, f : tm , g : tm
       |--- |- if(x.A, true, f, g) => f : A[x:=true]
 
 --
+
+-- Есть связь между forall x.t, x.T?
+-- t1 : lam(S, x.app(t, T)) как вытащить T?
