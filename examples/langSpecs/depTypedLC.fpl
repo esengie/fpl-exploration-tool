@@ -39,7 +39,7 @@ Axioms :
   -- [Stable - Bool]
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
-      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2) : T[x:=t2]
+      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2, x.T) : T[x:=t2]
 
 --   TApp =
 --     forall t1 : tm , t2 : tm , S : ty, x.T : ty, y.R : ty, y.P : tm

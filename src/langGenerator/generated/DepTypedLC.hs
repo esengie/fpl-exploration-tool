@@ -8,6 +8,7 @@ import Data.Deriving (deriveEq1, deriveShow1)
 import Data.Functor.Classes
 import Control.Applicative
 import Control.Monad
+import Data.Foldable
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
@@ -22,7 +23,6 @@ consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
 data Term a
   = Varg a
-  | MetaVar (Term a) --- MetaVar Int
   | TyK
   | True
   | False
@@ -31,6 +31,7 @@ data Term a
   | Pi  (Type a) (Scope () Type a)
   | App (Term a) (Term a)
   | If (Scope () Type a) (Term a) (Term a) (Term a)
+  | Bg (Scope () Term (Var () a)) (Term a)
 
 type Type = Term
 
@@ -50,7 +51,6 @@ deriveTraversable ''Term
 
 instance Monad Term where
   Varg a     >>= f = f a
-  MetaVar a >>= f = MetaVar (a >>= f) -- fignya?
   TyK       >>= f = TyK
   Bool      >>= f = Bool
   True      >>= f = True
@@ -59,6 +59,7 @@ instance Monad Term where
   Lam ty t  >>= f = Lam (ty >>= f) (t >>>= f)
   Pi  ty t  >>= f = Pi  (ty >>= f) (t >>>= f)
   App t1 t2 >>= f = App (t1 >>= f) (t2 >>= f)
+  -- Bg t1 t2 >>= f = Bg ((fmap (>>>= f)) t1) (t2 >>= f)
 
 -- from reductions
 nf :: Term a -> Term a
@@ -84,7 +85,7 @@ check ctx want t = do
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
 
-infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
+infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a) -- Type (Maybe (Maybe v)) x y.T -> x.T
 infer ctx (Varg a) = ctx a
 infer ctx TyK     = throwError "Can't have star : star"
 infer ctx True    = pure Bool
@@ -103,6 +104,8 @@ infer ctx (Pi ty t) = do
     check ctx TyK ty
     check (consCtx ty ctx) TyK (fromScope t)
     pure TyK
+infer ctx (Bg tt t) = do
+    (\tt -> Bg tt t) . toScope <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope tt)
 infer ctx (App f x) = do
     v <- infer ctx f
     case v of
@@ -141,6 +144,61 @@ fromList ((x,t):xs) = \y -> if (x == y)
 abstract0 :: Monad f => f a -> Scope b f a
 abstract0 = abstract (const Nothing)
 
+-- flatten on var (traverse rem_i x - lowers ctx by one)
+-- x y z. t --> x y. t
+rem1 :: Var b a -> Maybe a
+rem1 (B _) = Nothing
+rem1 (F x) = Just x
+
+-- x y z. t --> x z. t
+rem2 :: Var b (Var b a) -> Maybe (Var b a)
+rem2 (B x) = Just (B x)
+rem2 (F (B _)) = Nothing
+rem2 (F (F x)) = Just (F x)
+
+-- x y z. t --> y z. t
+rem3 :: Var b (Var b (Var b a)) -> Maybe (Var b (Var b a))
+rem3 (B a) = Just (B a)
+rem3 (F (B x)) = Just (F (B x))
+rem3 (F (F (B _))) = Nothing
+rem3 (F (F (F x))) = Just (F (F x))
+
+-- r x y z. t --> x y z. t
+rem4 :: Var b (Var b (Var b (Var b a))) -> Maybe (Var b (Var b (Var b a)))
+rem4 (B a) = Just (B a)
+rem4 (F (B x)) = Just (F (B x))
+rem4 (F (F (B x))) = Just (F (F (B x)))
+rem4 (F (F (F (B _)))) = Nothing
+rem4 (F (F (F (F x)))) = Just (F (F (F x)))
+
+
+zer = fromScope $ abstract1 "y" (Varg "y")
+r = outBind2 $ fromScope $ abstract1 "y" (Varg "x")
+l = inBind2 $ fromScope $ abstract1 "y" (Varg "x")
+
+-- y.x -> f y.x
+outBind1 :: Monad f => f a -> f (Var b a)
+outBind1 x = fromScope $ abstract0 x
+
+-- y.x -> f1 f2 y.x
+outBind2 :: Monad f => f a -> f (Var b (Var b a))
+outBind2 = outBind1 . outBind1
+
+-- y.x -> f1 f2 f3 y.x
+outBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+outBind3 = outBind1 . outBind2
+
+-- y.x -> y f.x
+inBind1 :: Functor f => f a -> f (Var b a)
+inBind1 x = F <$> x
+
+-- y.x -> y f1 f2.x
+inBind2 :: Functor f => f a -> f (Var b (Var b a))
+inBind2 = inBind1 . inBind1
+
+-- y.x -> y f1 f2 f3.x
+inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+inBind3 = inBind1 . inBind2
 
 
 
