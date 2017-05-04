@@ -15,8 +15,9 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src/specLang
-                     , src/langGenerator
                      , src/specLang/parsLex
+                     , src/langGenerator
+                     , src/langGenerator/GeneratorTemplates
   exposed-modules:
   --CodeGen
   --SortCheck

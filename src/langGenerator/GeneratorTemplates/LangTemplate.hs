@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- May change name and add exports etc.
-module GenTemplate
+module LangTemplate
   where
 
 import Prelude hiding (pi, False, True)
@@ -10,6 +10,7 @@ import Data.Functor.Classes
 import Data.Foldable
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans (lift)
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
@@ -139,5 +140,21 @@ inBind2 = inBind1 . inBind1
 -- y.x -> y f1 f2 f3.x
 inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
 inBind3 = inBind1 . inBind2
+
+-- 2 vars
+infixl 1 >>>>=
+m >>>>= f = m >>>= lift . f
+
+-- 3 vars
+infixl 1 >>>>>=
+m >>>>>= f = m >>>>= lift . f
+
+-- 4 vars
+infixl 1 >>>>>>=
+m >>>>>>= f = m >>>>>= lift . f
+
+-- 5 vars
+infixl 1 >>>>>>>=
+m >>>>>>>= f = m >>>>>>= lift . f
 
 ---
