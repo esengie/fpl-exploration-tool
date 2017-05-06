@@ -20,18 +20,13 @@ type Pos = Int
 type VName = String
 type ErrorM = Either GenError
 
-data CodeGen = Gen {
-    count :: Int,
-    decls :: [Decl]
-  }
+data CodeGen = Gen{
+  count :: Int,
+  decls :: [Decl]
+}
 
 type GenM = ReaderT SymbolTable (StateT CodeGen (ErrorM))
 
-fresh :: GenM VName
-fresh = do
-  i <- gets count
-  modify (\st -> st{ count = i + 1})
-  return (vars !! i)
 
 -- looking using prettyPrint (yup)
 getDecl :: String -> GenM (Decl, Pos)
@@ -46,7 +41,7 @@ getDecl nm = do
 
 --------------------------------------------------------------------------------
 
-runGenM :: GenM a -> SymbolTable -> Module -> Either GenError a
+runGenM :: GenM a -> SymbolTable -> Module -> ErrorM a
 runGenM mon st md = evalStateT (runReaderT mon st) (Gen 0 (getDecls md))
 
 getDecls :: Module -> [Decl]

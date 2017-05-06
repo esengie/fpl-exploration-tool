@@ -19,7 +19,7 @@ import AST hiding (Var)
 import CodeGen.Common as X
 import CodeGen.ADT
 import CodeGen.MonadInstance
-import CodeGen.Infer
+import CodeGen.Infer as X
 
 --------------------------------------------------------------------------------
 -- Main place
