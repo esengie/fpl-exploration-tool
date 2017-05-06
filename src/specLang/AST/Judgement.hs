@@ -31,7 +31,7 @@ data Judgement =
 , jLeft  :: Term
 , jRight  :: Term
 , jType :: Maybe Term
-} deriving (Eq)
+}
 
 makeLenses ''Judgement
 

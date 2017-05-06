@@ -10,7 +10,7 @@ data Axiom = Axiom {
   forallVars :: [(MetaVar, Sort)],
   premise    :: [Judgement],
   conclusion :: Judgement
-} deriving (Eq)
+}
 
 instance Show Axiom where
   show (Axiom nm forall prem concl) = concat [nm, " =\n  ",

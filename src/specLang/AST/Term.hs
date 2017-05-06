@@ -99,7 +99,10 @@ instance Show FunctionalSymbol where
 data MetaVar = MetaVar {
   mContext  :: [VarName]
 , mName     :: VarName
-} deriving (Eq)
+}
+
+instance Eq MetaVar where
+  m == m' = (mName m) == (mName m')
 
 showCtxVar :: [Name] -> String -> String
 showCtxVar [] y = y

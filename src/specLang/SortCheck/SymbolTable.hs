@@ -33,7 +33,7 @@ data SymbolTable = SymbolTable {
 , _axioms        :: Map AST.Name Axiom
 , _reductions    :: Map AST.Name Reduction
 , _iSymAxiomMap  :: Map AST.Name AST.Name -- intro axioms of funSyms
-} deriving (Eq)
+}
 
 makeLenses ''SymbolTable
 

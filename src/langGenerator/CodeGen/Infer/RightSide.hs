@@ -35,7 +35,7 @@ buildRight fs ax = runBM (buildRight' fs ax)
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
-  correctFresh fs
+  correctFresh ax
   ---------------------- xy.T == yx.T ?? - no
   -- genCheckMetaEq
 
@@ -50,8 +50,11 @@ buildRight' fs ax = do
   -- First check all guys of the smth : T - build up the map (metavars : Term)
 
 -- first vars are already used
-correctFresh :: FunctionalSymbol -> BldRM ()
-correctFresh (FunSym _ lst _) = replicateM_ (length lst) fresh
+-- also axioms are always of the form like this
+correctFresh :: Axiom -> BldRM ()
+correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = do
+  populateSt lst
+  where populateSt ((ct, (MetaVar )))
 
 runBM :: BldRM a -> ErrorM a
 runBM mon = evalStateT mon (Q 0 Map.empty [] [] [])
