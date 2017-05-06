@@ -17,8 +17,15 @@ import AST.Axiom
 
 import CodeGen.Common hiding (count)
 
+
 data Q = Q {
-  count :: Int
+  count :: Int,
+  -- metaVar as in forall x.T -> termExp
+  metas :: Map.Map MetaVar [Exp],
+
+  doExps :: [Exp],
+  metaDefs :: [Judgement],
+  notDefs :: [Judgement]
 }
 
 type BldRM = StateT Q (ErrorM)
@@ -29,6 +36,14 @@ buildRight fs ax = runBM (buildRight' fs ax)
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
   correctFresh fs
+  ---------------------- xy.T == yx.T ?? - no
+  -- genCheckMetaEq
+
+
+  -- genCheckMetaEq
+  -- genReturnExp
+
+
   fr <- fresh
   return (Var (UnQual $ sym fr))
   -- find all used Metavars + check for equality where needed
@@ -39,7 +54,7 @@ correctFresh :: FunctionalSymbol -> BldRM ()
 correctFresh (FunSym _ lst _) = replicateM_ (length lst) fresh
 
 runBM :: BldRM a -> ErrorM a
-runBM mon = evalStateT mon (Q 0)
+runBM mon = evalStateT mon (Q 0 Map.empty [] [] [])
 
 fresh :: BldRM VName
 fresh = do

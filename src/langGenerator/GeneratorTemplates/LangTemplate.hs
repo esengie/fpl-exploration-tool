@@ -166,6 +166,4 @@ toScope2 x = toScope $ toScope x
 toScope3 x = toScope $ toScope2 x
 toScope4 x = toScope $ toScope3 x
 
-consCtx' [] ctx = ctx
-consCtx' (x : xs) ctx = consCtx' xs (consCtx x ctx)
 ---
