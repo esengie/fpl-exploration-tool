@@ -23,12 +23,12 @@ import CodeGen.Common hiding (count)
 data Q = Q {
   _count :: Int,
   -- metaVar as in forall x.T -> termExp
-  _metas :: Map.Map MetaVar [Exp],
+  _metas :: Map.Map MetaVar [(MetaVar, Exp)],
   _doExps :: [Exp], -- this will be concatted
 
   -- we define some metavars on the right of :, others we need to check
   _juds  :: Juds,
-  -- various counters - the bigger monad will have to use this
+  -- various counters - the outer monad will have to use this
   _toGen :: ToGen
 }
 
@@ -37,9 +37,6 @@ data Juds = Juds {
   _notDefsTy :: [Judgement], -- here it will not, so
   _notDefsVar :: [Exp]
 }
-
-initJuds :: Juds
-initJuds = Juds [] [] []
 
 makeLenses ''Juds
 makeLenses ''Q
@@ -75,7 +72,7 @@ correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = do
   where
     populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
       v <- fresh
-      metas %= Map.insert (MetaVar ct nm) ([var (name v)])
+      metas %= updateMap (MetaVar ct nm) (var (name v))
       populateSt xs
     populateSt [] = return ()
     populateSt _ = throwError "Can't have a non metavariable in an axiom"
@@ -85,17 +82,27 @@ correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = do
 genCheckMetaEq :: BldRM ()
 genCheckMetaEq = do
   ms <- gets _metas
-  let res = genEq <$> ms
-  metas .= res
+  metas <~ sequence (genMetaEq <$> ms)
+  -- metas .= res
 
-genMetaEq :: [Exp] -> BldRM [Exp]
+genMetaEq :: [(MetaVar, Exp)] -> BldRM [(MetaVar, Exp)]
 genMetaEq [] = return []
-genEq (x : []) = return x
-genEq (x : y : xs) = do
+genMetaEq (x : []) = return [x]
+genMetaEq ((m1, x) : y'@(m2, y) : xs) = do
+  ex <- conniveMeta m1 x m2
+  genEqCheck ex y
+  genMetaEq (y' : xs)
 
-  genEq (y : xs)
+-- we take a metavar + its' term and transform it into a second metavar
+-- and return the transformation (it's context manipulation xzy.T -> yxz.T)
+conniveMeta :: MetaVar -> Exp -> MetaVar -> BldRm Exp
+conniveMeta mF expr mTo = undefined
 
 --------------------------------------------------------------------------------
+
+initJuds :: Juds
+initJuds = Juds [] [] []
+
 
 runBM :: BldRM a -> ErrorM a
 runBM mon = evalStateT mon (Q 0 Map.empty [] initJuds initGen)
@@ -105,5 +112,10 @@ fresh = do
   i <- gets _count
   count += 1
   return (vars !! i)
+
+updateMap :: (Ord k) => k -> v -> Map.Map k [(k,v)] -> Map.Map k [(k,v)]
+updateMap k v m = case Map.lookup k m of
+  Nothing -> Map.insert k [(k,v)] m
+  (Just vs) -> Map.insert k ((k,v):vs) m
 
 ---

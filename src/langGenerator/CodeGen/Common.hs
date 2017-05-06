@@ -26,6 +26,7 @@ data CodeGen = Gen{
 }
 
 -- Helpers to generate
+-- maybe omit this and just generate the longest binder in context
 data ToGen = ToGen {
   _swappers :: !Int,  -- max(i and j)
   _adders :: !Int,    -- i'th added
