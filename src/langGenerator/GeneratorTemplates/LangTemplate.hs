@@ -91,30 +91,50 @@ abstract0 = abstract (const Nothing)
 
 -- flatten on var (traverse rem_i x - lowers ctx by one)
 -- x y z. t --> x y. t
-rem1 :: Var b a -> Maybe a
-rem1 (B _) = Nothing
-rem1 (F x) = Just x
+rem1 :: Var b a -> TC a
+rem1 (B _) = Left "There is var at 1"
+rem1 (F x) = pure x
 
 -- x y z. t --> x z. t
-rem2 :: Var b (Var b a) -> Maybe (Var b a)
-rem2 (B x) = Just (B x)
-rem2 (F (B _)) = Nothing
-rem2 (F (F x)) = Just (F x)
+rem2 :: Var b (Var b a) -> TC (Var b a)
+rem2 (B x) = pure (B x)
+rem2 (F (B _)) = Left "There is var at 2"
+rem2 (F (F x)) = pure (F x)
+
+swap12 :: Var b (Var b a) -> TC (Var b (Var b a))
+swap12 (B x) = pure (F (B x))
+swap12 (F (B x)) = pure (B x)
+swap12 x = pure x
 
 -- x y z. t --> y z. t
-rem3 :: Var b (Var b (Var b a)) -> Maybe (Var b (Var b a))
-rem3 (B a) = Just (B a)
-rem3 (F (B x)) = Just (F (B x))
-rem3 (F (F (B _))) = Nothing
-rem3 (F (F (F x))) = Just (F (F x))
+rem3 :: Var b (Var b (Var b a)) -> TC (Var b (Var b a))
+rem3 (B a) = pure (B a)
+rem3 (F (B x)) = pure (F (B x))
+rem3 (F (F (B _))) = Left "There is var at 3"
+rem3 (F (F (F x))) = pure (F (F x))
+
+swap23 :: Var b (Var b (Var b a)) -> TC (Var b (Var b (Var b a)))
+swap23 (B x) = pure (B x)
+swap23 (F (B x)) = pure (F $ F $ B x)
+swap23 (F (F (B x))) = pure (F $ B x)
+swap23 x = pure x
+
+swap13 :: Var b (Var b (Var b a)) -> TC (Var b (Var b (Var b a)))
+swap13 (B x) = pure (F $ F $ B x)
+swap13 (F (B x)) = pure (F $ B x)
+swap13 (F (F (B x))) = pure (B x)
+swap13 x = pure x
+
+swap32 = swap23
+swap31 = swap13
 
 -- r x y z. t --> x y z. t
-rem4 :: Var b (Var b (Var b (Var b a))) -> Maybe (Var b (Var b (Var b a)))
-rem4 (B a) = Just (B a)
-rem4 (F (B x)) = Just (F (B x))
-rem4 (F (F (B x))) = Just (F (F (B x)))
-rem4 (F (F (F (B _)))) = Nothing
-rem4 (F (F (F (F x)))) = Just (F (F (F x)))
+rem4 :: Var b (Var b (Var b (Var b a))) -> TC (Var b (Var b (Var b a)))
+rem4 (B a) = pure (B a)
+rem4 (F (B x)) = pure (F (B x))
+rem4 (F (F (B x))) = pure (F (F (B x)))
+rem4 (F (F (F (B _)))) = Left "There is var at 4"
+rem4 (F (F (F (F x)))) = pure (F (F (F x)))
 
 -- Add useless binders
 -- y.x -> f y.x
