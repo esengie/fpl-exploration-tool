@@ -1,14 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- May change name and add exports etc.
-module GenTemplate
+module LangTemplate
   where
 
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)
 import Data.Functor.Classes
+import Data.Foldable
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans (lift)
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
@@ -46,15 +48,21 @@ instance Monad Term where
 
 type TermEq a = Term a -> Term a -> Bool
 
-check' :: Show a => TermEq a -> Ctx a -> Type a -> Term a -> TC ()
-check' f ctx want t = do
-  have <- infer f ctx t
-  when (not $ f have want) $ Left $
+checkT :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
+checkT ctx want t = do
+  have <- infer ctx t
+  when (nf have /= nf want) $ Left $
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
-infer :: Show a => TermEq a -> Ctx a -> Term a -> TC (Type a)
-infer feq ctx (Var a) = ctx a
-infer feq ctx TyDef   = throwError "Can't have def : def"
+checkEq :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
+checkEq ctx want have = do
+  when (nf have /= nf want) $ Left $
+    "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
+
+
+infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
+infer ctx (Var a) = ctx a
+infer ctx TyDef   = throwError "Can't have def : def"
 
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
@@ -71,27 +79,111 @@ fromList ((x,t):xs) = \y -> if (x == y)
 
 -- infer in the empty context
 infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
-infer0 = infer (==) emptyCtx
-
-checkSimple :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
-checkSimple ctx want t = check' (==) ctx want t
-
-checkNf :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
-checkNf ctx want t = check' (\x y -> nf x == nf y) ctx want t
+infer0 = infer emptyCtx
 
 -- from reductions
 nf :: Term a -> Term a
 nf (Var a) = Var a
 nf TyDef   = TyDef
 
+abstract0 :: Monad f => f a -> Scope b f a
+abstract0 = abstract (const Nothing)
 
+-- flatten on var (traverse rem_i x - lowers ctx by one)
+-- x y z. t --> x y. t
+rem1 :: Var b a -> TC a
+rem1 (B _) = Left "There is var at 1"
+rem1 (F x) = pure x
 
+-- x y z. t --> x z. t
+rem2 :: Var b (Var b a) -> TC (Var b a)
+rem2 (B x) = pure (B x)
+rem2 (F (B _)) = Left "There is var at 2"
+rem2 (F (F x)) = pure (F x)
 
+swap12 :: Var b (Var b a) -> TC (Var b (Var b a))
+swap12 (B x) = pure (F (B x))
+swap12 (F (B x)) = pure (B x)
+swap12 x = pure x
 
+-- x y z. t --> y z. t
+rem3 :: Var b (Var b (Var b a)) -> TC (Var b (Var b a))
+rem3 (B a) = pure (B a)
+rem3 (F (B x)) = pure (F (B x))
+rem3 (F (F (B _))) = Left "There is var at 3"
+rem3 (F (F (F x))) = pure (F (F x))
 
+swap23 :: Var b (Var b (Var b a)) -> TC (Var b (Var b (Var b a)))
+swap23 (B x) = pure (B x)
+swap23 (F (B x)) = pure (F $ F $ B x)
+swap23 (F (F (B x))) = pure (F $ B x)
+swap23 x = pure x
 
+swap13 :: Var b (Var b (Var b a)) -> TC (Var b (Var b (Var b a)))
+swap13 (B x) = pure (F $ F $ B x)
+swap13 (F (B x)) = pure (F $ B x)
+swap13 (F (F (B x))) = pure (B x)
+swap13 x = pure x
 
+swap32 = swap23
+swap31 = swap13
 
+-- r x y z. t --> x y z. t
+rem4 :: Var b (Var b (Var b (Var b a))) -> TC (Var b (Var b (Var b a)))
+rem4 (B a) = pure (B a)
+rem4 (F (B x)) = pure (F (B x))
+rem4 (F (F (B x))) = pure (F (F (B x)))
+rem4 (F (F (F (B _)))) = Left "There is var at 4"
+rem4 (F (F (F (F x)))) = pure (F (F (F x)))
 
+-- Add useless binders
+-- y.x -> f y.x
+outBind1 :: Monad f => f a -> f (Var b a)
+outBind1 x = fromScope $ abstract0 x
+
+-- y.x -> f1 f2 y.x
+outBind2 :: Monad f => f a -> f (Var b (Var b a))
+outBind2 = outBind1 . outBind1
+
+-- y.x -> f1 f2 f3 y.x
+outBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+outBind3 = outBind1 . outBind2
+
+-- y.x -> y f.x
+inBind1 :: Functor f => f a -> f (Var b a)
+inBind1 x = F <$> x
+
+-- y.x -> y f1 f2.x
+inBind2 :: Functor f => f a -> f (Var b (Var b a))
+inBind2 = inBind1 . inBind1
+
+-- y.x -> y f1 f2 f3.x
+inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+inBind3 = inBind1 . inBind2
+
+-- 2 vars
+infixl 1 >>>>=
+m >>>>= f = m >>>= lift . f
+
+-- 3 vars
+infixl 1 >>>>>=
+m >>>>>= f = m >>>>= lift . f
+
+-- 4 vars
+infixl 1 >>>>>>=
+m >>>>>>= f = m >>>>>= lift . f
+
+-- 5 vars
+infixl 1 >>>>>>>=
+m >>>>>>>= f = m >>>>>>= lift . f
+
+---------
+fromScope2 x = fromScope $ fromScope x
+fromScope3 x = fromScope $ fromScope2 x
+fromScope4 x = fromScope $ fromScope3 x
+
+toScope2 x = toScope $ toScope x
+toScope3 x = toScope $ toScope2 x
+toScope4 x = toScope $ toScope3 x
 
 ---

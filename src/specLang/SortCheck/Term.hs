@@ -77,7 +77,9 @@ checkTerm' meta ctx fa@(FunApp f args) = do
         throwError $ "Arg sorts don't match, need:\n\t" ++ show needS ++
           "\nbut have:\n\t" ++ show haveS ++ "\nin: " ++ show fa
       return res
-checkTerm' meta ctx ar@(Subst v@(Meta name) varName what) = do -- v must(!) be a metavar
+checkTerm' meta ctx ar@(Subst v varName what) = do
+  -- v must(!) be a metavar
+  checkMetaInSubst v
   -- we get: checking of compatibility of varName and v for free,
   -- also that v has all its' context and that it's a MetaVar
   ctx' <- checkCtxShadowing ctx [varName]
@@ -87,9 +89,11 @@ checkTerm' meta ctx ar@(Subst v@(Meta name) varName what) = do -- v must(!) be a
   if whatSort /= varSort
     then throwError $ "Can't subst " ++ show whatSort ++ " into a var of sort " ++ show varSort
     else return sorte
-checkTerm' _ _ Subst{} = throwError "May substitute only into metavars"
 
-
+checkMetaInSubst :: Term -> SortCheckM ()
+checkMetaInSubst (Meta _) = return()
+checkMetaInSubst (Subst v _ _) = checkMetaInSubst v
+checkMetaInSubst _ = throwError "May substitute only into metavars"
 
   -- st <- checkTerm' meta (vars ++ ctx) tm
   -- lift $ addToCtx (length vars) st

@@ -1,17 +1,26 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module GenTemplate
-  where
+-- module GenTemplate
+--   where
 
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)
 import Data.Functor.Classes
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans
+import Data.Foldable
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
 import Bound
+
+import LangTemplate (rem1, rem2, rem3, rem4,
+                     outBind1, outBind2, outBind3,
+                     inBind1, inBind2, inBind3,
+                     abstract0, (>>>>=), (>>>>>=), (>>>>>>=),
+                     fromScope2, fromScope3, fromScope4,
+                     toScope2, toScope3, toScope4)
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
@@ -21,7 +30,7 @@ consCtx ty ctx (B ()) = pure (F <$> ty)
 consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
 data Term a
-  = Var a
+  = Varg a
   | TyK
   | True
   | False
@@ -30,6 +39,7 @@ data Term a
   | Pi  (Type a) (Scope () Type a)
   | App (Term a) (Term a)
   | If (Scope () Type a) (Term a) (Term a) (Term a)
+  | Bg (Scope () (Scope () Term) a) (Term a)
 
 type Type = Term
 
@@ -40,7 +50,7 @@ instance Eq a => Eq (Term a) where (==) = eq1
 instance Show a => Show (Term a) where showsPrec = showsPrec1
 
 instance Applicative Term where
-  pure  = Var
+  pure  = Varg
   (<*>) = ap
 
 instance Functor Term  where fmap       = fmapDefault
@@ -48,7 +58,7 @@ instance Foldable Term where foldMap    = foldMapDefault
 deriveTraversable ''Term
 
 instance Monad Term where
-  Var a     >>= f = f a
+  Varg a     >>= f = f a
   TyK       >>= f = TyK
   Bool      >>= f = Bool
   True      >>= f = True
@@ -57,32 +67,34 @@ instance Monad Term where
   Lam ty t  >>= f = Lam (ty >>= f) (t >>>= f)
   Pi  ty t  >>= f = Pi  (ty >>= f) (t >>>= f)
   App t1 t2 >>= f = App (t1 >>= f) (t2 >>= f)
+  Bg t1 t2 >>= f = Bg (t1 >>>>= f) (t2 >>= f)
 
 -- from reductions
-rnf :: Term a -> Term a
-rnf (Var a) = Var a
-rnf TyK     = TyK
-rnf True    = True
-rnf False   = False
-rnf Bool    = Bool
-rnf (If a t x y) = case (rnf t) of
-      True  -> (rnf x)
-      False -> (rnf y)
-      x -> If (toScope $ rnf $ fromScope a) x (rnf x) (rnf y)
-rnf (Lam ty t)  = Lam (rnf ty) (toScope $ rnf $ fromScope t)
-rnf (Pi ty t)   = Pi  (rnf ty) (toScope $ rnf $ fromScope t)
-rnf (App t1 t2) = case (rnf t1, rnf t2) of
-      (Lam ty t1, t2) -> rnf (instantiate1 t2 t1)
+nf :: Term a -> Term a
+nf (Varg a) = Varg a
+nf TyK     = TyK
+nf True    = True
+nf False   = False
+nf Bool    = Bool
+nf (If a t x y) = case (nf t) of
+      True  -> (nf x)
+      False -> (nf y)
+      x -> If (toScope $ nf $ fromScope a) x (nf x) (nf y)
+nf (Lam ty t)  = Lam (nf ty) (toScope $ nf $ fromScope t)
+nf (Pi ty t)   = Pi  (nf ty) (toScope $ nf $ fromScope t)
+nf (App t1 t2) = case (nf t1, nf t2) of
+      (Lam ty t1, t2) -> nf (instantiate1 t2 t1)
       (f, x)  -> App f x
 
 check :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
 check ctx want t = do
   have <- infer ctx t
-  when (have /= (rnf want)) $ Left $
+  when (have /= (nf want)) $ Left $
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
-infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
-infer ctx (Var a) = ctx a
+
+infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a) -- Type (Maybe (Maybe v)) x y.T -> x.T
+infer ctx (Varg a) = ctx a
 infer ctx TyK     = throwError "Can't have star : star"
 infer ctx True    = pure Bool
 infer ctx False   = pure Bool
@@ -95,11 +107,14 @@ infer ctx (If a t x y) = do
     pure . nf $ instantiate1 t a
 infer ctx (Lam ty t) = do
     check ctx TyK ty
-    Pi ty . toScope <$> infer (consCtx ty ctx) (fromScope t)
+    Pi ty . toScope <$> infer (consCtx ty ctx) (fromScope t)--(fromScope t)
 infer ctx (Pi ty t) = do
     check ctx TyK ty
     check (consCtx ty ctx) TyK (fromScope t)
     pure TyK
+infer ctx (Bg tt t) = do
+    (\tt -> Bg tt t) . toScope2
+      <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope2 tt)
 infer ctx (App f x) = do
     v <- infer ctx f
     case v of
@@ -116,7 +131,6 @@ infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
 infer0 = infer emptyCtx
 
 -- smart constructors
-
 lam :: Eq a => a -> Type a -> Term a -> Term a
 lam v ty t = Lam ty (abstract1 v t)
 
@@ -136,6 +150,11 @@ fromList ((x,t):xs) = \y -> if (x == y)
                               then return t
                               else fromList xs y
 
+
+
+zer = fromScope $ abstract1 "y" (Varg "y")
+r = outBind2 $ fromScope $ abstract1 "y" (Varg "x")
+l = inBind1 $ fromScope $ abstract1 "y" (Varg "x")
 
 
 

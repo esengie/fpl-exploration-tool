@@ -10,7 +10,7 @@ data Reduction = Reduction {
   forallVars :: [(MetaVar, Sort)],
   premise    :: [Judgement],
   conclusion :: Judgement
-} deriving (Eq)
+}
 
 instance Show Reduction where
   show (Reduction nm forall prem concl) = concat [nm, " =\n  ",

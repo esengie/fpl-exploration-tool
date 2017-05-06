@@ -1,8 +1,10 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module CodeGen.Common
   where
 
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
@@ -15,17 +17,21 @@ import AST.Term hiding (Var)
 
 type GenError = String
 type Pos = Int
+type VName = String
 type ErrorM = Either GenError
-data CodeGen = Gen {
-    count :: Int,
-    decls :: [Decl]
-  }
+
+data CodeGen = Gen{
+  count :: Int,
+  decls :: [Decl]
+}
+
 type GenM = ReaderT SymbolTable (StateT CodeGen (ErrorM))
+
 
 -- looking using prettyPrint (yup)
 getDecl :: String -> GenM (Decl, Pos)
 getDecl nm = do
-  decl <- lift $ gets decls
+  decl <- gets decls
   lift . lift $ getDecl' 0 nm decl
   where getDecl' :: Pos -> String -> [Decl] -> ErrorM (Decl, Pos)
         getDecl' n nm (TypeSig{}:xs) = getDecl' (n+1) nm xs
@@ -35,8 +41,8 @@ getDecl nm = do
 
 --------------------------------------------------------------------------------
 
-runGenM :: GenM a -> SymbolTable -> Module -> Either GenError a
-runGenM mon st md = evalStateT (runReaderT mon st) (Gen 1 (getDecls md))
+runGenM :: GenM a -> SymbolTable -> Module -> ErrorM a
+runGenM mon st md = evalStateT (runReaderT mon st) (Gen 0 (getDecls md))
 
 getDecls :: Module -> [Decl]
 getDecls (Module _ _ _ x) = x
@@ -68,5 +74,7 @@ replace :: Pos -> [a] -> [a] -> [a]
 replace n xs lst = (take n lst) ++ xs ++ (drop (n + 1) lst)
 
 dummyDecl = [((fromParseResult . parseDecl) "x = 1212312323123123213")]
+
+vars = zipWith (\x y -> x ++ show y) (repeat "v") ([1..] :: [Integer])
 
 ---

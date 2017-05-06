@@ -19,7 +19,7 @@ import AST hiding (Var)
 import CodeGen.Common as X
 import CodeGen.ADT
 import CodeGen.MonadInstance
-import CodeGen.Infer
+import CodeGen.Infer as X
 
 --------------------------------------------------------------------------------
 -- Main place
@@ -35,7 +35,7 @@ gen template spec = do
       case m of
         ParseFailed _ msg -> putStrLn $ "Parse error: " ++ msg
         ParseOk (Left msg) -> putStrLn $ "Codegen error: " ++ msg
-        ParseOk (Right m') -> (putStrLn . prettyPrint) (m')
+        ParseOk (Right m') -> (putStrLn . prettyPrint) (getDecls m' !! 6)
 
 fileee = "src/langGenerator/GeneratorTemplates/LangTemplate.hs"
 fileee' = "src/langGenerator/experims.hs"
