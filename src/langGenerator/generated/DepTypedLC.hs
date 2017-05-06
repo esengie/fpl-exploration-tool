@@ -10,6 +10,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Data.Foldable
+import Data.Functor.Identity
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
@@ -20,7 +21,8 @@ import LangTemplate (rem1, rem2, rem3, rem4,
                      inBind1, inBind2, inBind3,
                      abstract0, (>>>>=), (>>>>>=), (>>>>>>=),
                      fromScope2, fromScope3, fromScope4,
-                     toScope2, toScope3, toScope4)
+                     toScope2, toScope3, toScope4,
+                     add1, add2, add3, add4)
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
@@ -154,8 +156,9 @@ fromList ((x,t):xs) = \y -> if (x == y)
 
 zer = fromScope $ abstract1 "y" (Varg "y")
 r = outBind2 $ fromScope $ abstract1 "y" (Varg "x")
-l = inBind1 $ fromScope $ abstract1 "y" (Varg "x")
+l = inBind2 $ fromScope $ abstract1 "y" (Varg "x")
 
+r' = (fromScope $ abstract1 "y" (Varg "x"))
 
 
 ---

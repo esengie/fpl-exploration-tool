@@ -10,6 +10,7 @@ import Data.Functor.Classes
 import Data.Foldable
 import Control.Applicative
 import Control.Monad
+import Data.Functor.Identity
 import Control.Monad.Trans (lift)
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
@@ -86,14 +87,14 @@ nf :: Term a -> Term a
 nf (Var a) = Var a
 nf TyDef   = TyDef
 
-abstract0 :: Monad f => f a -> Scope b f a
-abstract0 = abstract (const Nothing)
-
 -- flatten on var (traverse rem_i x - lowers ctx by one)
 -- x y z. t --> x y. t
 rem1 :: Var b a -> TC a
 rem1 (B _) = Left "There is var at 1"
 rem1 (F x) = pure x
+
+add1 :: a -> Identity (Var b a)
+add1 x = pure $ F x
 
 -- x y z. t --> x z. t
 rem2 :: Var b (Var b a) -> TC (Var b a)
@@ -101,10 +102,9 @@ rem2 (B x) = pure (B x)
 rem2 (F (B _)) = Left "There is var at 2"
 rem2 (F (F x)) = pure (F x)
 
-swap12 :: Var b (Var b a) -> TC (Var b (Var b a))
-swap12 (B x) = pure (F (B x))
-swap12 (F (B x)) = pure (B x)
-swap12 x = pure x
+add2 :: Var b a -> Identity (Var b (Var b a))
+add2 (B x) = pure $ B x
+add2 (F x) = pure $ F (F x)
 
 -- x y z. t --> y z. t
 rem3 :: Var b (Var b (Var b a)) -> TC (Var b (Var b a))
@@ -113,20 +113,10 @@ rem3 (F (B x)) = pure (F (B x))
 rem3 (F (F (B _))) = Left "There is var at 3"
 rem3 (F (F (F x))) = pure (F (F x))
 
-swap23 :: Var b (Var b (Var b a)) -> TC (Var b (Var b (Var b a)))
-swap23 (B x) = pure (B x)
-swap23 (F (B x)) = pure (F $ F $ B x)
-swap23 (F (F (B x))) = pure (F $ B x)
-swap23 x = pure x
-
-swap13 :: Var b (Var b (Var b a)) -> TC (Var b (Var b (Var b a)))
-swap13 (B x) = pure (F $ F $ B x)
-swap13 (F (B x)) = pure (F $ B x)
-swap13 (F (F (B x))) = pure (B x)
-swap13 x = pure x
-
-swap32 = swap23
-swap31 = swap13
+add3 :: Var b (Var b a) -> Identity (Var b (Var b (Var b a)))
+add3 (B x) = pure $ B x
+add3 (F (B x)) = pure $ F (B x)
+add3 (F x) = pure $ F (F x)
 
 -- r x y z. t --> x y z. t
 rem4 :: Var b (Var b (Var b (Var b a))) -> TC (Var b (Var b (Var b a)))
@@ -136,7 +126,16 @@ rem4 (F (F (B x))) = pure (F (F (B x)))
 rem4 (F (F (F (B _)))) = Left "There is var at 4"
 rem4 (F (F (F (F x)))) = pure (F (F (F x)))
 
+add4 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b (Var b a))))
+add4 (B x) = pure $ B x
+add4 (F (B x)) = pure $ F (B x)
+add4 (F (F (B x))) = pure $ F (F (B x))
+add4 (F x) = pure $ F (F x)
+
 -- Add useless binders
+abstract0 :: Monad f => f a -> Scope b f a
+abstract0 = abstract (const Nothing)
+
 -- y.x -> f y.x
 outBind1 :: Monad f => f a -> f (Var b a)
 outBind1 x = fromScope $ abstract0 x
@@ -160,6 +159,29 @@ inBind2 = inBind1 . inBind1
 -- y.x -> y f1 f2 f3.x
 inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
 inBind3 = inBind1 . inBind2
+
+
+------------- Swappers
+swap12 :: Var b (Var b a) -> Identity (Var b (Var b a))
+swap12 (B x) = pure (F (B x))
+swap12 (F (B x)) = pure (B x)
+swap12 x = pure x
+
+swap23 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
+swap23 (B x) = pure (B x)
+swap23 (F (B x)) = pure (F $ F $ B x)
+swap23 (F (F (B x))) = pure (F $ B x)
+swap23 x = pure x
+
+swap13 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
+swap13 (B x) = pure (F $ F $ B x)
+swap13 (F (B x)) = pure (F $ B x)
+swap13 (F (F (B x))) = pure (B x)
+swap13 x = pure x
+
+swap21 = swap12
+swap32 = swap23
+swap31 = swap13
 
 -- 2 vars
 infixl 1 >>>>=

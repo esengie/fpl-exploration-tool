@@ -15,8 +15,8 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import SortCheck
-import AST hiding (Var)
-import AST.Axiom
+import AST hiding (Var, name)
+import AST.Axiom hiding (name)
 
 import CodeGen.Common hiding (count)
 
@@ -24,12 +24,24 @@ data Q = Q {
   _count :: Int,
   -- metaVar as in forall x.T -> termExp
   _metas :: Map.Map MetaVar [Exp],
+  _doExps :: [Exp], -- this will be concatted
 
-  _doExps :: [Exp],
-  _metaDefs :: [Judgement],
-  _notDefs :: [Judgement]
+  -- we define some metavars on the right of :, others we need to check
+  _juds  :: Juds,
+  -- various counters - the bigger monad will have to use this
+  _toGen :: ToGen
 }
 
+data Juds = Juds {
+  _metaTyDefs :: [Judgement], -- some var will be added to the metas map
+  _notDefsTy :: [Judgement], -- here it will not, so
+  _notDefsVar :: [Exp]
+}
+
+initJuds :: Juds
+initJuds = Juds [] [] []
+
+makeLenses ''Juds
 makeLenses ''Q
 
 type BldRM = StateT Q (ErrorM)
@@ -39,9 +51,11 @@ buildRight fs ax = runBM (buildRight' fs ax)
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
+  -- write all metas given as args
   correctFresh ax
+  -- check metas for equality and leave only one in map if many
+  genCheckMetaEq
   ---------------------- xy.T == yx.T ?? - no
-  -- genCheckMetaEq
 
 
   -- genCheckMetaEq
@@ -61,17 +75,30 @@ correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = do
   where
     populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
       v <- fresh
-      metas %= Map.insert (MetaVar ct nm) ([varr v])
+      metas %= Map.insert (MetaVar ct nm) ([var (name v)])
       populateSt xs
     populateSt [] = return ()
     populateSt _ = throwError "Can't have a non metavariable in an axiom"
 
+--------------------------------------------------------------------------------
+-- Check terms for equality
+genCheckMetaEq :: BldRM ()
+genCheckMetaEq = do
+  ms <- gets _metas
+  let res = genEq <$> ms
+  metas .= res
+
+genMetaEq :: [Exp] -> BldRM [Exp]
+genMetaEq [] = return []
+genEq (x : []) = return x
+genEq (x : y : xs) = do
+
+  genEq (y : xs)
+
+--------------------------------------------------------------------------------
 
 runBM :: BldRM a -> ErrorM a
-runBM mon = evalStateT mon (Q 0 Map.empty [] [] [])
-
-varr = Var . UnQual . sym
-
+runBM mon = evalStateT mon (Q 0 Map.empty [] initJuds initGen)
 
 fresh :: BldRM VName
 fresh = do
