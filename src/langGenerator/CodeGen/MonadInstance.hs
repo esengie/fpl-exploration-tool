@@ -3,8 +3,8 @@ module CodeGen.MonadInstance(
   funToPat
 ) where
 
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
@@ -20,6 +20,7 @@ inApp a op b = Paren (InfixApp (varExp a) (qvarOp op) (varExp b))
   where qvarOp nm = QVarOp (UnQual (Symbol nm))
         varExp nm = Var (UnQual (Ident nm))
 
+-- f(x.A, x.B, y.t) ---> ... (F v1 v2 v3) = ...
 funToPat :: FunctionalSymbol -> Pat
 funToPat (FunSym nm lst _) = PApp (UnQual (Ident (caps nm)))
                                   (map (PVar . Ident) (take (length lst) vars))
@@ -54,9 +55,9 @@ genMonad = do
   let matches = (\f -> infixMatch f (boundBind f)) <$> Map.elems (st^.SortCheck.SymbolTable.funSyms) ++ sorts
   let monadInst = monadTerm (bindVarA : matches)
 
-  lst <- lift get
+  lst <- get
   (_, n)<- getDecl "instance Monad Term"
-  lift $ put lst{decls = replace n [monadInst] (decls lst)}
+  put lst{decls = replace n [monadInst] (decls lst)}
 
 
 

@@ -4,8 +4,8 @@ module CodeGen.Infer
 -- )
 where
 
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
@@ -55,9 +55,9 @@ genInfer = do
 
   --- Gather and build a resulting function
   let res = funInfer (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
-  lst <- lift get
+  lst <- get
   (_ , n) <- getDecl "infer"
-  lift $ put lst{decls = replace n [res] (decls lst)}
+  put lst{decls = replace n [res] (decls lst)}
 
 
 

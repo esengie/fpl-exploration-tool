@@ -3,8 +3,8 @@ module CodeGen.ADT(
   genSortTypes
 ) where
 
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
@@ -52,9 +52,9 @@ genTerms = do
   let qConDecls = (ctorVarA : sorts) ++ funSymbs
   let termT = termA qConDecls Nothing
   -- Generate data Term a = ...
-  lst <- lift get
+  lst <- get
   (_ , n) <- getDecl "data Term"
-  lift $ put lst{decls = (replace n [termT] (decls lst))}
+  put lst{decls = (replace n [termT] (decls lst))}
 --------------------------------------------------------------------------------
 
 -- "Type" -> type Type = Term

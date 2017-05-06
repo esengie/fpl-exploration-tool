@@ -18,7 +18,9 @@ import Bound
 import LangTemplate (rem1, rem2, rem3, rem4,
                      outBind1, outBind2, outBind3,
                      inBind1, inBind2, inBind3,
-                     abstract0, (>>>>=), (>>>>>=), (>>>>>>=))
+                     abstract0, (>>>>=), (>>>>>=), (>>>>>>=),
+                     fromScope2, fromScope3, fromScope4,
+                     toScope2, toScope3, toScope4)
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
@@ -111,8 +113,8 @@ infer ctx (Pi ty t) = do
     check (consCtx ty ctx) TyK (fromScope t)
     pure TyK
 infer ctx (Bg tt t) = do
-    (\tt -> Bg tt t) . toScope . toScope
-      <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope $ fromScope tt)
+    (\tt -> Bg tt t) . toScope2
+      <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope2 tt)
 infer ctx (App f x) = do
     v <- infer ctx f
     case v of

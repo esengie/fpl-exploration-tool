@@ -157,4 +157,15 @@ m >>>>>>= f = m >>>>>= lift . f
 infixl 1 >>>>>>>=
 m >>>>>>>= f = m >>>>>>= lift . f
 
+---------
+fromScope2 x = fromScope $ fromScope x
+fromScope3 x = fromScope $ fromScope2 x
+fromScope4 x = fromScope $ fromScope3 x
+
+toScope2 x = toScope $ toScope x
+toScope3 x = toScope $ toScope2 x
+toScope4 x = toScope $ toScope3 x
+
+consCtx' [] ctx = ctx
+consCtx' (x : xs) ctx = consCtx' xs (consCtx x ctx)
 ---
