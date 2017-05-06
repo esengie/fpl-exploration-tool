@@ -104,6 +104,10 @@ data MetaVar = MetaVar {
 instance Eq MetaVar where
   m == m' = (mName m) == (mName m')
 
+instance Ord MetaVar where
+  m < m' = (mName m) < (mName m')
+
+
 showCtxVar :: [Name] -> String -> String
 showCtxVar [] y = y
 showCtxVar [x] y = x ++ "." ++ y

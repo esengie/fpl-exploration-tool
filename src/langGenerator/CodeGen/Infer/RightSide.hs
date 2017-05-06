@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module CodeGen.Infer.RightSide(
   buildRight
 ) where
@@ -5,6 +7,7 @@ module CodeGen.Infer.RightSide(
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
+import Control.Lens
 import Language.Haskell.Exts.Simple
 import Debug.Trace
 
@@ -17,16 +20,17 @@ import AST.Axiom
 
 import CodeGen.Common hiding (count)
 
-
 data Q = Q {
-  count :: Int,
+  _count :: Int,
   -- metaVar as in forall x.T -> termExp
-  metas :: Map.Map MetaVar [Exp],
+  _metas :: Map.Map MetaVar [Exp],
 
-  doExps :: [Exp],
-  metaDefs :: [Judgement],
-  notDefs :: [Judgement]
+  _doExps :: [Exp],
+  _metaDefs :: [Judgement],
+  _notDefs :: [Judgement]
 }
+
+makeLenses ''Q
 
 type BldRM = StateT Q (ErrorM)
 
@@ -54,15 +58,25 @@ buildRight' fs ax = do
 correctFresh :: Axiom -> BldRM ()
 correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = do
   populateSt lst
-  where populateSt ((ct, (MetaVar )))
+  where
+    populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
+      v <- fresh
+      metas %= Map.insert (MetaVar ct nm) ([varr v])
+      populateSt xs
+    populateSt [] = return ()
+    populateSt _ = throwError "Can't have a non metavariable in an axiom"
+
 
 runBM :: BldRM a -> ErrorM a
 runBM mon = evalStateT mon (Q 0 Map.empty [] [] [])
 
+varr = Var . UnQual . sym
+
+
 fresh :: BldRM VName
 fresh = do
-  i <- gets count
-  modify (\st -> st{ count = i + 1})
+  i <- gets _count
+  count += 1
   return (vars !! i)
 
 ---
