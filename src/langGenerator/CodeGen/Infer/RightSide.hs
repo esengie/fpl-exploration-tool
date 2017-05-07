@@ -25,7 +25,7 @@ data Q = Q {
   _count :: Int,
   -- metaVar as in forall x.T -> termExp
   _metas :: Map.Map MetaVar [(Ctx, Exp)],
-  _doExps :: [Exp], -- this will be concatted
+  _doStmts :: [Stmt], -- this will be concatted
 
   -- we define some metavars on the right of :, others we need to check
   _juds  :: Juds,
@@ -53,15 +53,14 @@ buildRight' fs ax = do
   correctFresh ax
   -- check metas for equality and leave only one in map if many
   genCheckMetaEq
-  ---------------------- xy.T == yx.T ?? - no
-
-
-  genCheckMetaEq
-  genReturnExp (conclusion ax)
-  fr <- fresh
-  return (Var (UnQual $ sym fr))
   -- find all used Metavars + check for equality where needed
   -- First check all guys of the smth : T - build up the map (metavars : Term)
+
+
+  -- check metas for equality after all of them are added
+  genCheckMetaEq
+  genReturnSt fs (conclusion ax)
+  uses doStmts doE
 
 --------------------------------------------------------------------------------
 -- first vars are already used
@@ -104,11 +103,16 @@ conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
 conniveMeta ctx (oldCt, expr) = undefined
 
 --------------------------------------------------------------------------------
-genReturnExp :: Judgement -> BldRM ()
-genReturnExp (Statement _ _ Nothing) = undefined
-genReturnExp (Statement _ _ (Just ty)) = do
+genReturnSt :: FunctionalSymbol -> Judgement -> BldRM ()
+genReturnSt (FunSym _ _ res) (Statement _ _ Nothing) = do
+  appendExp $ retExp (tyCtor $ sortToTyCtor $ getSortName res)
+genReturnSt _ (Statement _ _ (Just ty)) = do
   ret <- buildTermExp [] ty
-  doExps %= (++ [retExp ret]) -- append to list
+  appendExp $ retExp ret
+genReturnSt _ _ = throwError "Can't have anything but funsym in conclusion"
+
+appendExp :: Exp -> BldRM ()
+appendExp ex = doStmts %= (++ [Qualifier ex])
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
 -- untyped => problematic
@@ -144,6 +148,10 @@ appFunS nm lst = undefined
 retExp :: Exp -> Exp
 retExp ex = undefined
 
+tyCtor :: String -> Exp
+tyCtor st = Con (UnQual (Ident st))
+
+-- txyz : x = F(F(B()))
 buildVar :: Ctx -> VarName -> Exp
 buildVar = undefined
 
