@@ -90,11 +90,10 @@ genMetaEq [] = return []
 genMetaEq (x : []) = return [x]
 genMetaEq (tm : y'@(ct2, y) : xs) = do
   ex <- conniveMeta ct2 tm
-  genEqCheck (toScope (length ct2) ex) y                               -- !! gen
-  genMetaEq (y' : xs)
+  let ex' = eqCheckExp (toScope (length ct2) ex) y
+  appendExp ex'
 
-genEqCheck :: Exp -> Exp -> BldRM ()
-genEqCheck ex1 ex2 = undefined
+  genMetaEq (y' : xs)
 
 -- we take a metavar + its' term and transform it into a metavar in different ctx
 -- and return the transformation (it's context manipulation xzy.T -> yxz.T)
@@ -147,6 +146,9 @@ appFunS nm lst = undefined
 
 retExp :: Exp -> Exp
 retExp ex = undefined
+
+eqCheckExp :: Exp -> Exp -> Exp
+eqCheckExp ex1 ex2 = undefined
 
 tyCtor :: String -> Exp
 tyCtor st = Con (UnQual (Ident st))
