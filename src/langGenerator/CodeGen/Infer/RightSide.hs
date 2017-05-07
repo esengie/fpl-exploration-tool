@@ -64,6 +64,7 @@ buildRight' fs ax = do
   -- find all used Metavars + check for equality where needed
   -- First check all guys of the smth : T - build up the map (metavars : Term)
 
+--------------------------------------------------------------------------------
 -- first vars are already used
 -- also axioms are always of the form like this
 correctFresh :: Axiom -> BldRM ()
@@ -85,24 +86,32 @@ genCheckMetaEq = do
   metas <~ sequence (genMetaEq <$> ms)
   -- metas .= res
 
-genMetaEq :: [(MetaVar, Exp)] -> BldRM [(MetaVar, Exp)]
+genMetaEq :: [(Ctx, Exp)] -> BldRM [(Ctx, Exp)] -- refuqtor using ctx only
 genMetaEq [] = return []
 genMetaEq (x : []) = return [x]
-genMetaEq ((m1, x) : y'@(m2, y) : xs) = do
-  ex <- conniveMeta m1 x m2
+genMetaEq (tm : y'@(ct2, y) : xs) = do
+  ex <- conniveMeta ct2 tm
   genEqCheck ex y
   genMetaEq (y' : xs)
 
--- we take a metavar + its' term and transform it into a second metavar
+-- we take a metavar + its' term and transform it into a metavar in different ctx
 -- and return the transformation (it's context manipulation xzy.T -> yxz.T)
-conniveMeta :: MetaVar -> Exp -> MetaVar -> BldRm Exp
-conniveMeta mF expr mTo = undefined
+-- this is the most difficult function
+conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
+conniveMeta ctx (oldCt, expr) = undefined
 
+--------------------------------------------------------------------------------
+-- walk the term and build it var by var
+-- untyped => problematic
+buildExp :: Ctx -> Term -> BldRM Exp
+buildExp ctx tm = undefined
+
+--------------------------------------------------------------------------------
+-- Helpers
 --------------------------------------------------------------------------------
 
 initJuds :: Juds
 initJuds = Juds [] [] []
-
 
 runBM :: BldRM a -> ErrorM a
 runBM mon = evalStateT mon (Q 0 Map.empty [] initJuds initGen)

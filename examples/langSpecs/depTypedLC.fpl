@@ -43,7 +43,7 @@ Axioms :
 
   TSig =
     forall t1 : tm , t2 : tm , S : ty, (x y).T : ty
-      y: S |- t1 : pi(S, x.T) , |- t2 : S |---- |- sigma(S , (y x).T) : T[x:=t2][y:= t2]
+      |- t1 : pi(S, x.T[y:=true]) , |- t2 : S |---- |- sigma(S , (y x).T) : T[x:=t2][y:= t2]
 
 --   TApp =
 --     forall t1 : tm , t2 : tm , S : ty, x.T : ty, y.R : ty, y.P : tm
