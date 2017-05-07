@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module CodeGen.Common
   where
@@ -24,6 +24,20 @@ data CodeGen = Gen{
   count :: Int,
   decls :: [Decl]
 }
+
+-- Helpers to generate
+-- maybe omit this and just generate the longest binder in context
+data ToGen = ToGen {
+  _swappers :: !Int,  -- max(i and j)
+  _adders :: !Int,    -- i'th added
+  _removers :: !Int,  -- i'th removed
+  _binds :: !Int
+}
+
+initGen :: ToGen
+initGen = ToGen 0 0 0 1
+
+makeLenses ''ToGen
 
 type GenM = ReaderT SymbolTable (StateT CodeGen (ErrorM))
 
