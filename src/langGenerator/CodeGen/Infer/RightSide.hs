@@ -16,6 +16,7 @@ import qualified Data.Map as Map
 
 import SortCheck
 import AST hiding (Var, name)
+import qualified AST (Term(Var))
 import AST.Axiom hiding (name)
 
 import CodeGen.Common hiding (count)
@@ -23,7 +24,7 @@ import CodeGen.Common hiding (count)
 data Q = Q {
   _count :: Int,
   -- metaVar as in forall x.T -> termExp
-  _metas :: Map.Map MetaVar [(MetaVar, Exp)],
+  _metas :: Map.Map MetaVar [(Ctx, Exp)],
   _doExps :: [Exp], -- this will be concatted
 
   -- we define some metavars on the right of :, others we need to check
@@ -86,13 +87,19 @@ genCheckMetaEq = do
   metas <~ sequence (genMetaEq <$> ms)
   -- metas .= res
 
-genMetaEq :: [(Ctx, Exp)] -> BldRM [(Ctx, Exp)] -- refuqtor using ctx only
+-- generate code for meta equality checking
+genMetaEq :: [(Ctx, Exp)] -> BldRM [(Ctx, Exp)]
 genMetaEq [] = return []
 genMetaEq (x : []) = return [x]
 genMetaEq (tm : y'@(ct2, y) : xs) = do
   ex <- conniveMeta ct2 tm
-  genEqCheck ex y
+  genEqCheck ex y                                      -- !! gen
   genMetaEq (y' : xs)
+
+
+
+genEqCheck :: Exp -> Exp -> BldRM ()
+genEqCheck ex1 ex2 = undefined
 
 -- we take a metavar + its' term and transform it into a metavar in different ctx
 -- and return the transformation (it's context manipulation xzy.T -> yxz.T)
@@ -103,8 +110,22 @@ conniveMeta ctx (oldCt, expr) = undefined
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
 -- untyped => problematic
-buildExp :: Ctx -> Term -> BldRM Exp
-buildExp ctx tm = undefined
+buildTermExp :: Ctx -> Term -> BldRM Exp
+buildTermExp ctx (AST.Var vn) = return $ buildVar ctx vn -- builds up stuff like F(F(F(F(B()))))
+buildTermExp ctx (Subst into vn what) = do
+  intoE <- buildTermExp (vn:ctx) into
+  whatE <- buildTermExp (vn:ctx) what
+  return $ inst1 whatE intoE
+buildTermExp ctx (Meta mv) = do
+  res <- uses metas (Map.lookup mv)
+  case res of
+    Nothing -> throwError $ "MetaVar " ++ show mv ++ " not found in terms"
+    Just res' -> conniveMeta ctx (res' !! 0)
+buildTermExp ctx (FunApp nm lst) = undefined
+
+
+buildVar :: Ctx -> VarName -> Exp
+buildVar = undefined
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -122,9 +143,13 @@ fresh = do
   count += 1
   return (vars !! i)
 
-updateMap :: (Ord k) => k -> v -> Map.Map k [(k,v)] -> Map.Map k [(k,v)]
+
+inst1 :: Exp -> Exp -> Exp -- generates instantiate1 v x code
+inst1 ex1 ex2 = undefined
+
+updateMap :: MetaVar -> v -> Map.Map MetaVar [(Ctx,v)] -> Map.Map MetaVar [(Ctx,v)]
 updateMap k v m = case Map.lookup k m of
-  Nothing -> Map.insert k [(k,v)] m
-  (Just vs) -> Map.insert k ((k,v):vs) m
+  Nothing -> Map.insert k [(mContext k,v)] m
+  (Just vs) -> Map.insert k ((mContext k,v):vs) m
 
 ---
