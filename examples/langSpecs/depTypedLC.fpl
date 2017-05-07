@@ -1,5 +1,5 @@
 DependentSorts :
-  tm, ty
+  tm, ty, tn
 
 FunctionalSymbols :
   bool : ty
@@ -26,7 +26,7 @@ Axioms :
 
   If-then =
     forall t : tm, t1 : tm, t2 : tm, x.A : ty
-      x : bool |- A def, |- t1 : A[x:=true], |- t2 : A[x:=false], |- t : bool |--- |- if(x.A, t, t1, t2) : A[x:=t]
+      x : bool |- A def, |- t1 : A[x:=true], |- t2 : A[x:=false], |- t : bool |--- |- if(x.A, t, t1, t2) def -- : A[x:=t]
 
   K-Pi =
     forall T1 : ty , x.T2 : ty

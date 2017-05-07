@@ -163,17 +163,17 @@ r' = (fromScope $ abstract1 "y" (Varg "x"))
 -- x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
 -- z -> z+y -> v+zy -> x+vzy
 -- fun :: Scope () Term a -> Term a -> Term a
-fun t s x v = let tm = toScope4 $ rta1 (rta1 (rta1 (fromScope t)))
-                  s2 = toScope $ rta1 s
-                  tsub = (instantiate1 x tm)
-                  tork = instantiate1 v tsub
+fun t s x v = let tm = rta1 (rta1 (rta1 (fromScope t)))
+                  s2 = rta1 s
+                  tsub = (instantiate1 x (toScope tm))
+                  tork = instantiate1 v (toScope tsub)
           in
-   Lam s (toScope $ Lam (fromScope s2) (fromScope tork))
+   Lam s (toScope $ Lam s2 (toScope tork))
 
 inBool x = instantiate1 True x
 rta1 x = runIdentity (traverse add1 x)
 
-fals' = toScope3 $ rta1 (rta1 (rta1 False))
-tru' = toScope2 $ rta1 (rta1 True)
+fals' = rta1 (rta1 (rta1 False))
+tru' = rta1 (rta1 True)
 
 ---

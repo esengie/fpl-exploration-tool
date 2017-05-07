@@ -56,10 +56,8 @@ buildRight' fs ax = do
   ---------------------- xy.T == yx.T ?? - no
 
 
-  -- genCheckMetaEq
-  -- genReturnExp
-
-
+  genCheckMetaEq
+  genReturnExp (conclusion ax)
   fr <- fresh
   return (Var (UnQual $ sym fr))
   -- find all used Metavars + check for equality where needed
@@ -93,20 +91,24 @@ genMetaEq [] = return []
 genMetaEq (x : []) = return [x]
 genMetaEq (tm : y'@(ct2, y) : xs) = do
   ex <- conniveMeta ct2 tm
-  genEqCheck ex y                                      -- !! gen
+  genEqCheck (toScope (length ct2) ex) y                               -- !! gen
   genMetaEq (y' : xs)
-
-
 
 genEqCheck :: Exp -> Exp -> BldRM ()
 genEqCheck ex1 ex2 = undefined
 
 -- we take a metavar + its' term and transform it into a metavar in different ctx
 -- and return the transformation (it's context manipulation xzy.T -> yxz.T)
--- this is the most difficult function
+-- this is the most difficult function, builds a not scoped repr
 conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
 conniveMeta ctx (oldCt, expr) = undefined
 
+--------------------------------------------------------------------------------
+genReturnExp :: Judgement -> BldRM ()
+genReturnExp (Statement _ _ Nothing) = undefined
+genReturnExp (Statement _ _ (Just ty)) = do
+  ret <- buildTermExp [] ty
+  doExps %= (++ [retExp ret]) -- append to list
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
 -- untyped => problematic
@@ -115,21 +117,56 @@ buildTermExp ctx (AST.Var vn) = return $ buildVar ctx vn -- builds up stuff like
 buildTermExp ctx (Subst into vn what) = do
   intoE <- buildTermExp (vn:ctx) into
   whatE <- buildTermExp (vn:ctx) what
-  return $ inst1 whatE intoE
+  return $ inst1 whatE (toScope 1 intoE) -- 1 scope only
 buildTermExp ctx (Meta mv) = do
   res <- uses metas (Map.lookup mv)
   case res of
     Nothing -> throwError $ "MetaVar " ++ show mv ++ " not found in terms"
+    -- we store metavar values as list, but we fold it
     Just res' -> conniveMeta ctx (res' !! 0)
-buildTermExp ctx (FunApp nm lst) = undefined
+buildTermExp ctx (FunApp nm lst) = do
+  -- see ctx ++ ctx', differs from our treatment in subst (*)
+  lst' <- mapM (\(ctx', tm) -> buildTermExp (ctx ++ ctx') tm) lst
+  let lst'' = (\((ctx', _), ex) -> toScope (length ctx') ex) <$> zip lst lst'
+  return $ appFunS nm lst''
 
+-- (*) x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
+--         ctx: z -> z+y -> v+zy -> x+vzy
 
-buildVar :: Ctx -> VarName -> Exp
-buildVar = undefined
 
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
+
+appFunS :: VarName -> [Exp] -> Exp
+appFunS nm lst = undefined
+
+retExp :: Exp -> Exp
+retExp ex = undefined
+
+buildVar :: Ctx -> VarName -> Exp
+buildVar = undefined
+
+inst1 :: Exp -> Exp -> Exp -- generates instantiate1 v x code
+inst1 ex1 ex2 = undefined
+
+toScope :: Int -> Exp -> Exp
+toScope n ex = undefined
+
+fromScope :: Int -> Exp -> Exp
+fromScope n ex = undefined
+
+swap :: (Int, Int) -> Exp -> Exp
+swap (n,m) e
+  | n == m = e
+  | n > m = swap (m,n) e
+  | otherwise = undefined
+
+rem :: Int -> Exp -> Exp
+rem n ex = undefined
+
+add :: Int -> Exp -> Exp
+add n ex = undefined
 
 initJuds :: Juds
 initJuds = Juds [] [] []
@@ -142,10 +179,6 @@ fresh = do
   i <- gets _count
   count += 1
   return (vars !! i)
-
-
-inst1 :: Exp -> Exp -> Exp -- generates instantiate1 v x code
-inst1 ex1 ex2 = undefined
 
 updateMap :: MetaVar -> v -> Map.Map MetaVar [(Ctx,v)] -> Map.Map MetaVar [(Ctx,v)]
 updateMap k v m = case Map.lookup k m of
