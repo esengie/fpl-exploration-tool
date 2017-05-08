@@ -43,7 +43,7 @@ trimMeta ctx (oldCt, expr) = undefined
 -- walk the term and build it var by var
 -- untyped => problematic
 buildTermExp :: Ctx -> Term -> BldRM Exp
-buildTermExp ctx (AST.Var vn) = return $ buildVar ctx vn -- builds up stuff like F(F(F(F(B()))))
+buildTermExp ctx (AST.Var vn) = lift $ buildVar ctx vn -- builds up stuff like F(F(F(F(B()))))
 buildTermExp ctx (Subst into vn what) = do
   intoE <- buildTermExp (vn:ctx) into
   whatE <- buildTermExp (vn:ctx) what

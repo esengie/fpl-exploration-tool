@@ -1,6 +1,7 @@
 module CodeGen.Infer.RightSide(
   buildRight
-) where
+)
+where
 
 import Control.Monad.Reader
 import Control.Monad.State
