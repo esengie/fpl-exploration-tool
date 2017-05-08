@@ -56,7 +56,10 @@ genInfer = do
   let fsyms = Map.elems (st^.SortCheck.funSyms)
   let fLeft = funLeft <$> fsyms
   -- We've checked our lang, can unJust
-  let fRight' = (\f -> buildRight f $ (unJust . funToAx st) f) <$> fsyms
+  let fRight' = (\f -> buildRight (st^.SortCheck.funSyms)
+                                  f
+                                  $ (unJust . funToAx st) f)
+                                  <$> fsyms
   fRight <- lift . lift $ sequence fRight'
 
   --- Gather and build a resulting function
