@@ -35,8 +35,7 @@ data Q = Q {
 
 data Juds = Juds {
   _metaTyDefs :: [(MetaVar, Judgement)], -- some var will be added to the metas map (|- g : T)
-  _notDefsTy :: [Judgement], -- here it will not, so v_i <- infer ...  (|- g : exp(T, G))
-  _notDefsVar :: [Name],
+  _notDefsTy :: [(Term, Judgement)], -- here it will not, so v_i <- infer ...  (|- g : exp(T, G))
   _otherJuds :: [Judgement]  -- |- g def
 }
 
@@ -61,45 +60,60 @@ buildRight' fs ax = do
   -- returns checks for contexts and infers the part after |-
   -- equality goes like this "checkEq a b >> infer (consCtx v) a"
   -- [[Exp]]
-  expsMeta <- uses (juds.metaTyDefs) (mapM (buildInferExps . snd))
+  expsMeta <- uses (juds.metaTyDefs) (mapM $ buildInferExps . snd)
   -- [MetaVar]
-  metas <- uses (juds.metaTyDefs) (map fst)
-  stmtsMeta <- mapM stmtsAndMetaLast $ zip metas expsMeta
+  metaJs <- use (juds.metaTyDefs)
+  stmtsMeta <- mapM stmtsAndMetaLast $ zipWith
+              (\(a,jud) c -> (a, judCtx jud,c))
+              metaJs  expsMeta
   mapM_ appendStmt (concat stmtsMeta)
+  -- check metas for equality after all of them are added
   genCheckMetaEq
   ------------------------------------------------------------------------------
-  expsTyTms <- uses (juds.notDefsTy) (mapM buildInferExps)
-  stmtsTyTms <- mapM stmtsAndTmEqLast $ expsTyTms
+  expsTyTms <- uses (juds.notDefsTy) (mapM $ buildInferExps . snd)
+  ctTerms <- use (juds.notDefsTy)
+  stmtsTyTms <- mapM stmtsAndTmEqLast $ zipWith
+              (\(a,jud) c -> (a, judCtx jud,c))
+              ctTerms expsTyTms
   mapM_ appendStmt (concat stmtsTyTms)
   ------------------------------------------------------------------------------
   -- a = b >> check ctx TyDef expr
-  expsDef <- uses (juds.notDefsTy) (mapM buildCheckExps)
+  expsDef <- uses (juds.otherJuds) (mapM buildCheckExps)
   mapM_ appendExp (concat expsDef)
 
-  -- check metas for equality after all of them are added
   genReturnSt fs (conclusion ax)
   uses doStmts doE
 
 -- >>= \t -> remvars (Metavar) this
-stmtsAndMetaLast :: (MetaVar, [Exp]) -> BldRM [Stmt]
-stmtsAndMetaLast (_, []) = throwError "stmtsAndMetaLast must be called with at least one expr"
+stmtsAndMetaLast :: (MetaVar, Ctx, [Exp]) -> BldRM [Stmt]
+stmtsAndMetaLast (_, _,  []) = throwError "stmtsAndMetaLast must be called with at least one expr"
 -- this is a metaVar def
-stmtsAndMetaLast (m, x:[]) = do
+stmtsAndMetaLast (m, ct, x:[]) = do
   vn <- fresh
-  return []
-stmtsAndMetaLast (m, x:xs) = do
-  xs' <- stmtsAndMetaLast (m, xs)
+  let vname = var (name vn)
+  -- trim ctx of metavar given in here and put it into the metamap
+  (mct, mvarExp) <- trimMeta (mContext m) (ct, vname)
+  vm <- fresh
+  metas %= updateMap (MetaVar mct (mName m)) (var (name vm))
+  -- return first v <- infer ..., then m <- trimmed
+  -- the benefit of using remove here is that it's in TC too,
+  -- every other place we just use Identity monad!
+  return [generator vn x, generator vm mvarExp]
+stmtsAndMetaLast (m, ct, x:xs) = do
+  xs' <- stmtsAndMetaLast (m, ct, xs)
   return $ Qualifier x : xs'
 
 -- >>= \t -> remvars (Metavar) this
-stmtsAndTmEqLast :: [Exp] -> BldRM [Stmt]
-stmtsAndTmEqLast [] = throwError "stmtsAndTmEqLast must be called with at least one expr"
--- this is a metaVar def
-stmtsAndTmEqLast (x:[]) = do
+stmtsAndTmEqLast :: (Term, Ctx, [Exp]) -> BldRM [Stmt]
+stmtsAndTmEqLast (_,_,[]) = throwError "stmtsAndTmEqLast must be called with at least one expr"
+-- this is a ": Exp" situation so we check it for equality
+stmtsAndTmEqLast (tm, ct, x:[]) = do
   vn <- fresh
-  return []
-stmtsAndTmEqLast (x:xs) = do
-  xs' <- stmtsAndTmEqLast xs
+  let vExp = var (name vn)
+  tmExp <- buildTermExp ct tm
+  return [generator vn x, Qualifier $ eqCheckExp tmExp vExp]
+stmtsAndTmEqLast (tm, ct, x:xs) = do
+  xs' <- stmtsAndTmEqLast (tm, ct, xs)
   return $ Qualifier x : xs'
 
 
@@ -151,6 +165,9 @@ genMetaEq (tm : y'@(ct2, y) : xs) = do
 conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
 conniveMeta ctx (oldCt, expr) = undefined
 
+trimMeta :: Ctx -> (Ctx, Exp) -> BldRM (Ctx, Exp)
+trimMeta ctx (oldCt, expr) = undefined
+
 --------------------------------------------------------------------------------
 genReturnSt :: FunctionalSymbol -> Judgement -> BldRM ()
 genReturnSt (FunSym _ _ res) (Statement _ _ Nothing) = do
@@ -194,6 +211,9 @@ buildTermExp ctx (FunApp nm lst) = do
 -- Helpers
 --------------------------------------------------------------------------------
 
+judCtx :: Judgement -> Ctx
+judCtx jud = jud^.jContext.to (map fst)
+
 appFunS :: VarName -> [Exp] -> Exp
 appFunS nm lst = undefined
 
@@ -232,7 +252,7 @@ add :: Int -> Exp -> Exp
 add n ex = undefined
 
 initJuds :: Juds
-initJuds = Juds [] [] [] []
+initJuds = Juds [] [] []
 
 runBM :: BldRM a -> ErrorM a
 runBM mon = evalStateT mon (Q 0 Map.empty [] initJuds initGen)
