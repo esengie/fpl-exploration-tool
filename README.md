@@ -1,4 +1,4 @@
-# This pretty much a work-in-progress.
+# This is pretty much a work-in-progress.
 
 The project is aimed at defining dependently typed languages via specifying their inference and reduction rules.
 

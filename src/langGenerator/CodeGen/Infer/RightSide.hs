@@ -15,7 +15,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import SortCheck
-import AST hiding (Var, name)
+import AST hiding (Var, name, Name)
 import qualified AST (Term(Var))
 import AST.Axiom hiding (name)
 
@@ -34,9 +34,9 @@ data Q = Q {
 }
 
 data Juds = Juds {
-  _metaTyDefs :: [Judgement], -- some var will be added to the metas map
-  _notDefsTy :: [Judgement], -- here it will not, so
-  _notDefsVar :: [Exp]
+  _metaTyDefs :: [(MetaVar, Judgement)], -- some var will be added to the metas map (|- g : T)
+  _notDefsTy :: [(Term, Judgement)], -- here it will not, so v_i <- infer ...  (|- g : exp(T, G))
+  _otherJuds :: [Judgement]  -- |- g def
 }
 
 makeLenses ''Juds
@@ -55,13 +55,77 @@ buildRight' fs ax = do
   genCheckMetaEq
   -- find all used Metavars + check for equality where needed
   -- First check all guys of the smth : T - build up the map (metavars : Term)
+  mapM_ labelJudgement (premise ax)
 
-
+  -- returns checks for contexts and infers the part after |-
+  -- equality goes like this "checkEq a b >> infer (consCtx v) a"
+  -- [[Exp]]
+  expsMeta <- uses (juds.metaTyDefs) (mapM $ buildInferExps . snd)
+  -- [MetaVar]
+  metaJs <- use (juds.metaTyDefs)
+  stmtsMeta <- mapM stmtsAndMetaLast $ zipWith
+              (\(a,jud) c -> (a, judCtx jud,c))
+              metaJs  expsMeta
+  mapM_ appendStmt (concat stmtsMeta)
   -- check metas for equality after all of them are added
   genCheckMetaEq
+  ------------------------------------------------------------------------------
+  expsTyTms <- uses (juds.notDefsTy) (mapM $ buildInferExps . snd)
+  ctTerms <- use (juds.notDefsTy)
+  stmtsTyTms <- mapM stmtsAndTmEqLast $ zipWith
+              (\(a,jud) c -> (a, judCtx jud,c))
+              ctTerms expsTyTms
+  mapM_ appendStmt (concat stmtsTyTms)
+  ------------------------------------------------------------------------------
+  -- a = b >> check ctx TyDef expr
+  expsDef <- uses (juds.otherJuds) (mapM buildCheckExps)
+  mapM_ appendExp (concat expsDef)
+
   genReturnSt fs (conclusion ax)
   uses doStmts doE
 
+-- >>= \t -> remvars (Metavar) this
+stmtsAndMetaLast :: (MetaVar, Ctx, [Exp]) -> BldRM [Stmt]
+stmtsAndMetaLast (_, _,  []) = throwError "stmtsAndMetaLast must be called with at least one expr"
+-- this is a metaVar def
+stmtsAndMetaLast (m, ct, x:[]) = do
+  vn <- fresh
+  let vname = var (name vn)
+  -- trim ctx of metavar given in here and put it into the metamap
+  (mct, mvarExp) <- trimMeta (mContext m) (ct, vname)
+  vm <- fresh
+  metas %= updateMap (MetaVar mct (mName m)) (var (name vm))
+  -- return first v <- infer ..., then m <- trimmed
+  -- the benefit of using remove here is that it's in TC too,
+  -- every other place we just use Identity monad!
+  return [generator vn x, generator vm mvarExp]
+stmtsAndMetaLast (m, ct, x:xs) = do
+  xs' <- stmtsAndMetaLast (m, ct, xs)
+  return $ Qualifier x : xs'
+
+-- >>= \t -> remvars (Metavar) this
+stmtsAndTmEqLast :: (Term, Ctx, [Exp]) -> BldRM [Stmt]
+stmtsAndTmEqLast (_,_,[]) = throwError "stmtsAndTmEqLast must be called with at least one expr"
+-- this is a ": Exp" situation so we check it for equality
+stmtsAndTmEqLast (tm, ct, x:[]) = do
+  vn <- fresh
+  let vExp = var (name vn)
+  tmExp <- buildTermExp ct tm
+  return [generator vn x, Qualifier $ eqCheckExp tmExp vExp]
+stmtsAndTmEqLast (tm, ct, x:xs) = do
+  xs' <- stmtsAndTmEqLast (tm, ct, xs)
+  return $ Qualifier x : xs'
+
+
+labelJudgement :: Judgement -> BldRM ()
+labelJudgement jud = undefined
+
+-- ctx, ctx, ctx, a = b >> infer cxzzczc
+buildInferExps :: Judgement -> [Exp]
+buildInferExps = undefined
+
+buildCheckExps :: Judgement -> [Exp]
+buildCheckExps = undefined
 --------------------------------------------------------------------------------
 -- first vars are already used
 -- also axioms are always of the form like this
@@ -101,6 +165,9 @@ genMetaEq (tm : y'@(ct2, y) : xs) = do
 conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
 conniveMeta ctx (oldCt, expr) = undefined
 
+trimMeta :: Ctx -> (Ctx, Exp) -> BldRM (Ctx, Exp)
+trimMeta ctx (oldCt, expr) = undefined
+
 --------------------------------------------------------------------------------
 genReturnSt :: FunctionalSymbol -> Judgement -> BldRM ()
 genReturnSt (FunSym _ _ res) (Statement _ _ Nothing) = do
@@ -111,7 +178,10 @@ genReturnSt _ (Statement _ _ (Just ty)) = do
 genReturnSt _ _ = throwError "Can't have anything but funsym in conclusion"
 
 appendExp :: Exp -> BldRM ()
-appendExp ex = doStmts %= (++ [Qualifier ex])
+appendExp ex = appendStmt (Qualifier ex)
+
+appendStmt :: Stmt -> BldRM ()
+appendStmt st = doStmts %= (++ [st])
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
 -- untyped => problematic
@@ -140,6 +210,9 @@ buildTermExp ctx (FunApp nm lst) = do
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
+
+judCtx :: Judgement -> Ctx
+judCtx jud = jud^.jContext.to (map fst)
 
 appFunS :: VarName -> [Exp] -> Exp
 appFunS nm lst = undefined
@@ -194,5 +267,8 @@ updateMap :: MetaVar -> v -> Map.Map MetaVar [(Ctx,v)] -> Map.Map MetaVar [(Ctx,
 updateMap k v m = case Map.lookup k m of
   Nothing -> Map.insert k [(mContext k,v)] m
   (Just vs) -> Map.insert k ((mContext k,v):vs) m
+
+generator :: VarName -> Exp -> Stmt
+generator vn ex = Generator (PVar $ name vn) ex
 
 ---
