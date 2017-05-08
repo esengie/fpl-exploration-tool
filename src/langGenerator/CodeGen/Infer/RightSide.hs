@@ -15,7 +15,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import SortCheck
-import AST hiding (Var, name)
+import AST hiding (Var, name, Name)
 import qualified AST (Term(Var))
 import AST.Axiom hiding (name)
 
@@ -34,9 +34,10 @@ data Q = Q {
 }
 
 data Juds = Juds {
-  _metaTyDefs :: [Judgement], -- some var will be added to the metas map
-  _notDefsTy :: [Judgement], -- here it will not, so
-  _notDefsVar :: [Exp]
+  _metaTyDefs :: [(MetaVar, Judgement)], -- some var will be added to the metas map (|- g : T)
+  _notDefsTy :: [Judgement], -- here it will not, so v_i <- infer ...  (|- g : exp(T, G))
+  _notDefsVar :: [Name],
+  _otherJuds :: [Judgement]  -- |- g def
 }
 
 makeLenses ''Juds
@@ -55,13 +56,62 @@ buildRight' fs ax = do
   genCheckMetaEq
   -- find all used Metavars + check for equality where needed
   -- First check all guys of the smth : T - build up the map (metavars : Term)
+  mapM_ labelJudgement (premise ax)
 
+  -- returns checks for contexts and infers the part after |-
+  -- equality goes like this "checkEq a b >> infer (consCtx v) a"
+  -- [[Exp]]
+  expsMeta <- uses (juds.metaTyDefs) (mapM (buildInferExps . snd))
+  -- [MetaVar]
+  metas <- uses (juds.metaTyDefs) (map fst)
+  stmtsMeta <- mapM stmtsAndMetaLast $ zip metas expsMeta
+  mapM_ appendStmt (concat stmtsMeta)
+  genCheckMetaEq
+  ------------------------------------------------------------------------------
+  expsTyTms <- uses (juds.notDefsTy) (mapM buildInferExps)
+  stmtsTyTms <- mapM stmtsAndTmEqLast $ expsTyTms
+  mapM_ appendStmt (concat stmtsTyTms)
+  ------------------------------------------------------------------------------
+  -- a = b >> check ctx TyDef expr
+  expsDef <- uses (juds.notDefsTy) (mapM buildCheckExps)
+  mapM_ appendExp (concat expsDef)
 
   -- check metas for equality after all of them are added
-  genCheckMetaEq
   genReturnSt fs (conclusion ax)
   uses doStmts doE
 
+-- >>= \t -> remvars (Metavar) this
+stmtsAndMetaLast :: (MetaVar, [Exp]) -> BldRM [Stmt]
+stmtsAndMetaLast (_, []) = throwError "stmtsAndMetaLast must be called with at least one expr"
+-- this is a metaVar def
+stmtsAndMetaLast (m, x:[]) = do
+  vn <- fresh
+  return []
+stmtsAndMetaLast (m, x:xs) = do
+  xs' <- stmtsAndMetaLast (m, xs)
+  return $ Qualifier x : xs'
+
+-- >>= \t -> remvars (Metavar) this
+stmtsAndTmEqLast :: [Exp] -> BldRM [Stmt]
+stmtsAndTmEqLast [] = throwError "stmtsAndTmEqLast must be called with at least one expr"
+-- this is a metaVar def
+stmtsAndTmEqLast (x:[]) = do
+  vn <- fresh
+  return []
+stmtsAndTmEqLast (x:xs) = do
+  xs' <- stmtsAndTmEqLast xs
+  return $ Qualifier x : xs'
+
+
+labelJudgement :: Judgement -> BldRM ()
+labelJudgement jud = undefined
+
+-- ctx, ctx, ctx, a = b >> infer cxzzczc
+buildInferExps :: Judgement -> [Exp]
+buildInferExps = undefined
+
+buildCheckExps :: Judgement -> [Exp]
+buildCheckExps = undefined
 --------------------------------------------------------------------------------
 -- first vars are already used
 -- also axioms are always of the form like this
@@ -111,7 +161,10 @@ genReturnSt _ (Statement _ _ (Just ty)) = do
 genReturnSt _ _ = throwError "Can't have anything but funsym in conclusion"
 
 appendExp :: Exp -> BldRM ()
-appendExp ex = doStmts %= (++ [Qualifier ex])
+appendExp ex = appendStmt (Qualifier ex)
+
+appendStmt :: Stmt -> BldRM ()
+appendStmt st = doStmts %= (++ [st])
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
 -- untyped => problematic
@@ -179,7 +232,7 @@ add :: Int -> Exp -> Exp
 add n ex = undefined
 
 initJuds :: Juds
-initJuds = Juds [] [] []
+initJuds = Juds [] [] [] []
 
 runBM :: BldRM a -> ErrorM a
 runBM mon = evalStateT mon (Q 0 Map.empty [] initJuds initGen)
@@ -194,5 +247,8 @@ updateMap :: MetaVar -> v -> Map.Map MetaVar [(Ctx,v)] -> Map.Map MetaVar [(Ctx,
 updateMap k v m = case Map.lookup k m of
   Nothing -> Map.insert k [(mContext k,v)] m
   (Just vs) -> Map.insert k ((mContext k,v):vs) m
+
+generator :: VarName -> Exp -> Stmt
+generator vn ex = Generator (PVar $ name vn) ex
 
 ---

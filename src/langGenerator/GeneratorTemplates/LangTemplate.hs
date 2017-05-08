@@ -55,10 +55,10 @@ checkT ctx want t = do
   when (nf have /= nf want) $ Left $
     "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
 
-checkEq :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
-checkEq ctx want have = do
+checkEq :: (Show a, Eq a) => Term a -> Term a -> TC ()
+checkEq want have = do
   when (nf have /= nf want) $ Left $
-    "type mismatch, have: " ++ (show have) ++ " want: " ++ (show want)
+    "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
 
 
 infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
