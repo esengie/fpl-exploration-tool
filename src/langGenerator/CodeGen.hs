@@ -1,5 +1,5 @@
 module CodeGen(
-  gen
+  codeGenIO
 , gene
 -- , module X
 ) where
@@ -24,24 +24,26 @@ import CodeGen.Infer as X
 --------------------------------------------------------------------------------
 -- Main place
 --------------------------------------------------------------------------------
-gen :: FilePath -> FilePath -> IO ()
-gen template spec = do
+genIO :: FilePath -> FilePath -> IO String
+genIO template spec = do
   st <- sortCheckIO spec
   case st of
-    Left msg -> putStrLn msg
+    Left msg -> putStrLn ("Sortcheck error: " ++ msg) >> return "err"
     Right st' -> do
       k <- parseFile template -- could Fail to parse
       let m = liftA3 runGenM (buildModule <$> k) (pure st') k
       case m of
-        ParseFailed _ msg -> putStrLn $ "Parse error: " ++ msg
-        ParseOk (Left msg) -> putStrLn $ "Codegen error: " ++ msg
-        ParseOk (Right m') -> (putStrLn . prettyPrint) (m')
+        ParseFailed _ msg -> putStrLn ("Parse error: " ++ msg) >> return "err"
+        ParseOk (Left msg) -> putStrLn ("Codegen error: " ++ msg) >> return "err"
+        ParseOk (Right m') -> return $ prettyPrint m'
 
-fileee = "src/langGenerator/GeneratorTemplates/LangTemplate.hs"
-fileee' = "src/langGenerator/experims.hs"
+templateFile = "src/langGenerator/GeneratorTemplates/LangTemplate.hs"
+
+codeGenIO :: FilePath -> IO String
+codeGenIO = genIO templateFile
 
 gene :: IO ()
-gene = gen fileee "examples/langSpecs/depTypedLC.fpl"
+gene = codeGenIO "examples/langSpecs/depTypedLC.fpl" >>= putStrLn
 
 --------------------------------------------------------------------------------
 
