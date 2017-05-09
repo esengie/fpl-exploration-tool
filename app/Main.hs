@@ -1,6 +1,8 @@
 module Main where
 
--- import SortCheck
+import CodeGen
 
 main :: IO ()
-main = putStr "m"
+main = do
+  putStrLn "lalla "
+  gene

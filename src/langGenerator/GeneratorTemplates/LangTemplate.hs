@@ -65,6 +65,9 @@ infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
 infer ctx (Var a) = ctx a
 infer ctx TyDef   = throwError "Can't have def : def"
 
+report :: String -> TC (Type a)
+report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
+
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 

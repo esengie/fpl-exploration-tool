@@ -15,9 +15,9 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import SortCheck
-import AST hiding (Var)
+import AST hiding (Var, name)
 import qualified AST(Term(Var))
-import AST.Axiom
+import AST.Axiom hiding (name)
 
 import CodeGen.Common
 import CodeGen.MonadInstance (funToPat)
@@ -25,9 +25,10 @@ import CodeGen.Infer.RightSide (buildRight)
 
 --------------------------------------------------------------------------
 bri = buildRight
+fMap = Map.insert "f" fFunS Map.empty
 fFunS = (FunSym "f" [DepSort "asd" 12, DepSort "a" 22] (DepSort "as" 1))
 fTm = Subst (AST.Var "asd") "asd" (AST.Var "er")
-fJud = Equality [] fTm fTm Nothing
+fJud = Statement [] fTm Nothing
 fAx = Axiom "as" [] [] fJud
 --------------------------------------------------------------------------
 
@@ -46,7 +47,7 @@ genInfer = do
 
   --- Var work
   let varL = funLeft (FunSym "Var" [varSort] varSort)
-  let varR = ExprHole
+  let varR = app (var $ name "ctx") (var $ name $ vars !! 0)
   ------
   --- Errors of type ty(*) = *
   let sortsL = (\x -> funLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st

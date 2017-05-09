@@ -7,18 +7,18 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
-import Control.Lens
+import Control.Lens hiding (op)
 
 import qualified Data.Map as Map
 
 import SortCheck.SymbolTable
-import AST.Term hiding (Var)
+import AST.Term hiding (Var, name)
 
 import CodeGen.Common
 
-inApp a op b = Paren (InfixApp (varExp a) (qvarOp op) (varExp b))
-  where qvarOp nm = QVarOp (UnQual (Symbol nm))
-        varExp nm = Var (UnQual (Ident nm))
+inApp a op' b = infixApp (varExp a) (qvarOp op') (varExp b)
+  where qvarOp nm = op (sym nm)
+        varExp nm = var (name nm)
 
 -- f(x.A, x.B, y.t) ---> ... (F v1 v2 v3) = ...
 funToPat :: FunctionalSymbol -> Pat
@@ -34,9 +34,11 @@ infixMatch f@(FunSym nm lst _) exp = InfixMatch (funToPat f)
 
 boundBind :: FunctionalSymbol -> Exp
 boundBind f@(FunSym nm lst _) = foldl App (Con (UnQual (Ident $ caps nm))) (map smart (zip lst vars))
-  where smart (srt, nm) | getSortDepth srt == 0 = inApp nm ">>=" fname
-                        | getSortDepth srt == 1 = inApp nm ">>>=" fname
-                        | otherwise = inApp nm ">>>>>>>>>=" fname
+  where
+    vn x = var (name x)
+    smart (srt, nm) | getSortDepth srt == 0 = inApp nm ">>=" fname
+                    | getSortDepth srt == 1 = inApp nm ">>>=" fname
+                    | otherwise = appFun (vn $ "ap" ++ (show $ getSortDepth srt)) (vn <$> [nm, fname])
 
 bindVarA :: Match
 bindVarA = infixMatch (FunSym "Var" [varSort] varSort)

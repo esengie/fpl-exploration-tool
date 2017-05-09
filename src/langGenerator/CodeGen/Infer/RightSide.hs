@@ -6,7 +6,6 @@ import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Control.Lens
 import Language.Haskell.Exts.Simple
-import Debug.Trace
 
 import qualified Data.Map as Map
 
@@ -20,7 +19,7 @@ import CodeGen.Infer.Helpers
 import CodeGen.Infer.Exprs
 
 buildRight :: (Map.Map AST.Name FunctionalSymbol) -> FunctionalSymbol -> Axiom -> ErrorM Exp
-buildRight fss fs ax = runBM fss (buildRight' fs ax)
+buildRight fss fs ax = pure ExprHole -- runBM fss (buildRight' fs ax)
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
@@ -105,6 +104,7 @@ correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
       populateSt xs
     populateSt [] = return ()
     populateSt _ = throwError "Can't have a non metavariable in an axiom"
+correctFresh _ = throwError $ "error: Only axioms with funsym intro are allowed"
 
 populateForalls :: Axiom -> BldRM ()
 populateForalls (Axiom _ lst _ _) = populateSt lst

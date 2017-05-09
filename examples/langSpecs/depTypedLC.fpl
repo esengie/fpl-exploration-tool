@@ -1,5 +1,5 @@
 DependentSorts :
-  tm, ty, tn
+  tm, ty
 
 FunctionalSymbols :
   bool : ty
@@ -9,8 +9,7 @@ FunctionalSymbols :
   lam : (ty , 0) * (tm , 1) -> tm
   app : (tm , 0) * (tm , 0) -> tm
   pi : (ty, 0) * (ty, 1) -> ty
-  sigma : (ty , 0) * (ty , 2) -> tm
-
+  sigma : (ty, 0) * (ty, 2) -> tm
 Axioms :
   Tr =
     forall
@@ -26,7 +25,7 @@ Axioms :
 
   If-then =
     forall t : tm, t1 : tm, t2 : tm, x.A : ty
-      x : bool |- A def, |- t1 : A[x:=true], |- t2 : A[x:=false], |- t : bool |--- |- if(x.A, t, t1, t2) def -- : A[x:=t]
+      x : bool |- A def, |- t1 : A[x:=true], |- t2 : A[x:=false], |- t : bool |--- |- if(x.A, t, t1, t2) : A[x:=t]
 
   K-Pi =
     forall T1 : ty , x.T2 : ty
@@ -45,18 +44,10 @@ Axioms :
     forall t1 : tm , t2 : tm , S : ty, (x y).T : ty
       |- t1 : pi(S, x.T[y:=true]) , |- t2 : S |---- |- sigma(S , (y x).T) : T[x:=t2][y:= t2]
 
---   TApp =
---     forall t1 : tm , t2 : tm , S : ty, x.T : ty, y.R : ty, y.P : tm
---       |- lam(S, y.lam(S, x.P)) : pi(S, x.pi(T, y.R) , |- t2 : S |---- |- app(S, t1 , t2, R, P) : T[x:=t2]
--- А в такой хитрой аксиоме строю терм y.lam(S, x.y), а затем разбираю pi чтобы достать T.
--- Ну а так как я не знаю что из себя представляет x, то контекст я расширить не могу
-
-
-
 Reductions :
   Beta = -- not impl
     forall x.b : tm, A : ty, a : tm, x.T : ty
-      x : A |- b : T, |- a : A |--- |- app(lam(A , x.b) , a) => b [x := a] : T[x:=app(a, a)]
+      x : A |- b : T, |- a : A |--- |- app(lam(A , x.b) , a) => b [x := a] : T[x:=a]
 
   IfRed =
     forall x.A : ty, f : tm , g : tm
