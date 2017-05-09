@@ -3,17 +3,13 @@
 module CodeGen.Infer.Common
   where
 
-import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Control.Lens
 import Language.Haskell.Exts.Simple
-import Debug.Trace
 
-import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import SortCheck
 import AST hiding (Var, name, Name)
 import qualified AST (Term(Var), Name(..))
 import AST.Axiom hiding (name)

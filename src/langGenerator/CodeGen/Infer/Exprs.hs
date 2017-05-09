@@ -1,17 +1,17 @@
-module CodeGen.Infer.Exprs
-  where
+module CodeGen.Infer.Exprs(
+  conniveMeta,
+  trimMeta,
+  buildTermExp,
+  buildCheckExps,
+  buildInferExps
+) where
 
-import Control.Monad.Reader
-import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Control.Lens hiding (op)
 import Language.Haskell.Exts.Simple
-import Debug.Trace
 
-import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import SortCheck
 import AST hiding (Var, name, Name)
 import qualified AST (Term(Var))
 import AST.Axiom hiding (name)
@@ -19,6 +19,7 @@ import AST.Axiom hiding (name)
 import CodeGen.Common hiding (count)
 import CodeGen.Infer.Common
 import CodeGen.Infer.Helpers
+import CodeGen.Infer.Solver
 
 -- [x,y,z] -> [x, x.y, xy.z]
 -- but it's types
@@ -75,12 +76,6 @@ buildEq j@(Equality _ l r _) = do
   let eq = eqCheckExp ex rex
   return (\x -> infixApp eq (op (sym ">>")) x , ex, l)
 
-infE = var (name "infer")
-checkE = var (name "check")
-ctxE = var (name "ctx")
-consCtxE = var (name "consCtx")
-sortToExp nm = tyCtor $ sortToTyCtor nm
-
 buildCheckExps :: Judgement -> BldRM [Exp]
 buildCheckExps jud = do
   checkHasNoType jud
@@ -114,14 +109,33 @@ termSort (FunApp nm _) = do
 -- and return the transformation (it's context manipulation xzy.T -> yxz.T)
 -- this is the most difficult function, builds a not scoped repr
 conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
-conniveMeta ctx (oldCt, expr) = undefined
+conniveMeta ctx (oldCt, ex) =
+  if (not $ isSubset oldCt ctx)
+    then throwError $
+      "error in sortchecking or impl " ++ show oldCt ++ " isn't a subset of " ++ show ctx
+    else do
+      let (swaps, adds) = ctxAddLtoR oldCt ctx
+      return $ appAdds adds (appSwaps swaps ex)
+
+appSwaps :: [Swapper] -> Exp -> Exp
+appSwaps lst ex = foldl (\ex (Sw x) -> swap x ex) ex lst
+
+appRems :: [Remover] -> Exp -> Exp
+appRems lst ex = foldl (\ex (R x) -> infixApp ex (op (sym ">>=")) (rmv x)) ex lst
+
+appAdds :: [Adder] -> Exp -> Exp
+appAdds lst ex = foldl (\ex (A x) -> add x ex) ex lst
 
 trimMeta :: Ctx -> (Ctx, Exp) -> BldRM (Ctx, Exp)
-trimMeta ctx (oldCt, expr) =
+trimMeta ctx (oldCt, ex) =
   if (not $ isSubset ctx oldCt)
     then throwError $
       "error in sortchecking or impl " ++ show ctx ++ " isn't a subset of " ++ show oldCt
-    else do 
+    else do
+      -- need only removes
+      let (ctx, rems) = ctxTrimLtoR oldCt ctx
+      -- a problem: we're in TC in rems, else we're in Identity!
+      return $ (ctx, appRems rems ex)
 
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var

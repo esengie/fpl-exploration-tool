@@ -1,7 +1,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module CodeGen.Infer.Solver
-  where
+module CodeGen.Infer.Solver(
+  ctxAddLtoR,
+  ctxTrimLtoR,
+  Adder(..),
+  Remover(..),
+  Swapper(..)
+) where
 
 import Data.List (elemIndex, elem)
 import Data.Maybe (fromJust)
@@ -71,6 +76,15 @@ ctxRemLtoR l r = (removed, swapped)
     removed  = remLtoR l' r'
     shortL = shortenLtoR l' r'
     swapped = swapLtoR shortL r'
+
+-- in put app we only need to trim
+-- ctxTrimLtoR ["y", "b", "z", "x"] ["z", "x", "y"] = (["y", "z", "x"], [R 3])
+ctxTrimLtoR :: Ctx -> Ctx -> (Ctx, [Remover])
+ctxTrimLtoR l r = (reverse newct, removed)
+  where
+    (l',r') = (reverse l, reverse r)
+    removed  = remLtoR l' r'
+    newct = shortenLtoR l' r'
 
 -- given ctx l we want it to be like r
 --  Prem: l in r, out: sequence of swaps then adds to get us r

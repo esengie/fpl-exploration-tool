@@ -2,16 +2,10 @@ module CodeGen.Infer.Helpers
   where
 
 import Data.List
-import Control.Monad.Reader
-import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Control.Lens
 import Language.Haskell.Exts.Simple
 
-import qualified Data.Set as Set
-import qualified Data.Map as Map
-
-import SortCheck
 import AST hiding (Var, name, Name)
 import qualified AST (Term(Var), Name(..))
 import AST.Axiom hiding (name)
@@ -60,15 +54,22 @@ swap :: (Int, Int) -> Exp -> Exp
 swap (n,m) ex
   | n == m = ex
   | n > m = swap (m,n) ex
-  | otherwise = app (var (name $ "swap" ++ show n ++ "'"  ++ show m)) ex
+  | otherwise = appFun trE [var (name $ "swap" ++ show n ++ "'"  ++ show m), ex]
 
-rem :: Int -> Exp -> Exp
-rem n ex = app (var (name $ "rem" ++ show n)) ex
+rmv :: Int -> Exp
+rmv n = app trE $ var (name $ "rem" ++ show n)
 
 add :: Int -> Exp -> Exp
-add n ex = app (var (name $ "add" ++ show n)) ex
+add n ex = appFun trE [var (name $ "add" ++ show n), ex]
 
 generator :: VarName -> Exp -> Stmt
 generator vn ex = Generator (PVar $ name vn) ex
+
+infE = var (name "infer")
+checkE = var (name "check")
+ctxE = var (name "ctx")
+consCtxE = var (name "consCtx")
+trE = var (name "tr")
+sortToExp nm = tyCtor $ sortToTyCtor nm
 
 ---
