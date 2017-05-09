@@ -105,7 +105,7 @@ instance Eq MetaVar where
   m == m' = (mName m) == (mName m')
 
 instance Ord MetaVar where
-  m < m' = (mName m) < (mName m')
+  m `compare` m' = (mName m) `compare` (mName m')
 
 
 showCtxVar :: [Name] -> String -> String

@@ -12,11 +12,13 @@ Think of it as a high level yacc+lex.
 - stack install alex happy
 - stack exec alex src/specLang/parsLex/Lexer.x
 - stack exec happy alex src/specLang/parsLex/Parser.y
-- stack repl
+- stack install
 
-And "mainCheck" checks your ".fpl" file (there's also a "mainParse" - in Parser module)
+~/.local/bin/fpl-exploration-tool-exe "examples/langSpecs/depTypedLC.fpl" >> my_src.hs
 
-E.g.: mainCheck "examples/langSpecs/depTypedLC.fpl"
+Note: needs "bound" library to function
+
+There are 2 modules: SortCheck and CodeGen, and two functions codeGenIO and sortCheckIO you can use those if you prefer.
 
 # Notes:
 - May have depsorts and simplesorts or only depsorts

@@ -1,8 +1,16 @@
 module Main where
 
+import System.Environment
+
 import CodeGen
 
 main :: IO ()
 main = do
-  putStrLn "lalla "
-  gene
+  args <- getArgs
+  case args of
+    [] -> gene
+    x:xs -> codeGenIO x >>= putStrLn
+
+
+
+----
