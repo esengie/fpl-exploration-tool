@@ -64,7 +64,7 @@ generator :: VarName -> Exp -> Stmt
 generator vn ex = Generator (PVar $ name vn) ex
 
 infE = var (name "infer")
-checkE = var (name "check")
+checkE = var (name "checkT")
 ctxE = var (name "ctx")
 consCtxE = var (name "consCtx")
 trE = var (name "tr")
