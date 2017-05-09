@@ -14,7 +14,7 @@ Think of it as a high level yacc+lex.
 - stack exec happy alex src/specLang/parsLex/Parser.y
 - stack install
 
-~/.local/bin/fpl-exploration-tool-exe "examples/langSpecs/depTypedLC.fpl" >> my_src.hs
+~/.local/bin/fpl-exploration-tool-exe "examples/langSpecs/depTypedLC.fpl" > my_src.hs
 
 Note: needs "bound" library to function
 
