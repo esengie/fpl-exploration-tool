@@ -119,7 +119,7 @@ appSwaps :: [Swapper] -> Exp -> Exp
 appSwaps lst ex' = foldl (\ex (Sw x) -> swap x ex) ex' lst
 
 appRems :: [Remover] -> Exp -> Exp
-appRems lst ex' = foldl (\ex (R x) -> infixApp ex (op (sym ">>=")) (rmv x)) ex' lst
+appRems lst ex' = foldl (\ex (R x) -> infixApp ex (op (sym ">>=")) (rmv x)) (retExp ex') lst
 
 appAdds :: [Adder] -> Exp -> Exp
 appAdds lst ex = foldl (\ex' (A x) -> add x ex') ex lst
@@ -142,7 +142,7 @@ buildTermExp :: Ctx -> Term -> BldRM Exp
 buildTermExp ctx (AST.Var vn) = lift $ buildVar ctx vn -- builds up stuff like F(F(F(F(B()))))
 buildTermExp ctx (Subst into vn what) = do
   intoE <- buildTermExp (vn:ctx) into
-  whatE <- buildTermExp (vn:ctx) what
+  whatE <- buildTermExp (ctx) what
   return $ inst1 whatE (toScope 1 intoE) -- 1 scope only
 buildTermExp ctx (Meta mv) = do
   res <- uses metas (Map.lookup mv)

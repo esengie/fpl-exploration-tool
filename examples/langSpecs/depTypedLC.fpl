@@ -1,5 +1,5 @@
 DependentSorts :
-  tm, ty
+  tm, ty, tn
 
 FunctionalSymbols :
   bool : ty

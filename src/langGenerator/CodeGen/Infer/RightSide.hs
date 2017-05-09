@@ -101,10 +101,10 @@ correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
   where
     populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
       v <- fresh
-      metas %= updateMap (MetaVar ct nm) (var (name v))
+      metas %= updateMap (MetaVar ct nm) (fromScope (length ct) $ var (name v))
       populateSt xs
     populateSt [] = return ()
-    populateSt _ = throwError "Can't have a non metavariable in an axiom"
+    populateSt _ = throwError "Can't have a non metavariable in an axiom concl"
 correctFresh _ = throwError $ "error: Only axioms with funsym intro are allowed"
 
 populateForalls :: Axiom -> BldRM ()
