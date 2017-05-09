@@ -23,8 +23,10 @@ aVar = TyVar (Ident "a")
 ctorDecl nm = ConDecl (Ident nm)
 -- typeCtor
 tyCon nm = TyCon $ UnQual (Ident nm)
+-- unit
+unitT = TyCon $ Special UnitCon
 -- Scope ()
-scope1 = TyApp (tyCon "Scope") (TyCon $ Special UnitCon)
+scope1 = TyApp (tyCon "Scope") unitT
 -- data Term a = ...
 termA = DataDecl DataType Nothing (DHApp (DHead (Ident "Term")) (UnkindedVar (Ident "a")))
 -- Var a
@@ -37,9 +39,9 @@ qualConDecl (FunSym nm args _) = QualConDecl Nothing Nothing (ctorDecl (caps nm)
 -- Genereates ctor part for funSym arg
 conArg :: Sort -> Type
 conArg (SimpleSort nm) = TyParen (TyApp (tyCon $ sortToTyName nm) aVar)
-conArg (DepSort nm 0) = conArg (SimpleSort nm)
-conArg (DepSort nm 1) = TyParen (TyApp (TyApp scope1 (tyCon $ sortToTyName nm)) aVar)
-conArg _ = conArg (SimpleSort "ERRROROROROROEREREROR")
+conArg (DepSort nm n) = TyParen (TyApp scoped aVar)
+  where scoped = foldr TyApp (tyCon $ sortToTyName nm) (take n $ repeat scope1)
+-- conArg (DepSort nm n) = TyParen (TyApp (tyCon $ sortToTyName nm) aVar)
 
 -- take definition of AST or function and replace with modified, better one
 genTerms :: GenM ()

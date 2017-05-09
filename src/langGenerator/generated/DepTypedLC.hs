@@ -17,12 +17,12 @@ import Data.Traversable.Deriving
 import Bound
 
 import LangTemplate (rem1, rem2, rem3, rem4,
-                     outBind1, outBind2, outBind3,
-                     inBind1, inBind2, inBind3,
-                     abstract0, (>>>>=), (>>>>>=), (>>>>>>=),
+                     ap2, ap3, ap4, ap5,
                      fromScope2, fromScope3, fromScope4,
                      toScope2, toScope3, toScope4,
-                     add1, add2, add3, add4)
+                     add1, add2, add3, add4,
+                     swap23, swap13, swap12,
+                     rt)
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
@@ -69,7 +69,7 @@ instance Monad Term where
   Lam ty t  >>= f = Lam (ty >>= f) (t >>>= f)
   Pi  ty t  >>= f = Pi  (ty >>= f) (t >>>= f)
   App t1 t2 >>= f = App (t1 >>= f) (t2 >>= f)
-  Bg t1 t2 >>= f = Bg (t1 >>>>= f) (t2 >>= f)
+  Bg t1 t2 >>= f = Bg (t1 `ap2` f) (t2 >>= f)
 
 -- from reductions
 nf :: Term a -> Term a
@@ -114,9 +114,9 @@ infer ctx (Pi ty t) = do
     check ctx TyK ty
     check (consCtx ty ctx) TyK (fromScope t)
     pure TyK
-infer ctx (Bg tt t) = do
-    (\tt -> Bg tt t) . toScope2
-      <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope2 tt)
+-- infer ctx (Bg tt t) = do
+--     (\tt -> Bg tt t) . toScope2
+--       <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope2 tt)
 infer ctx (App f x) = do
     v <- infer ctx f
     case v of
@@ -155,25 +155,26 @@ fromList ((x,t):xs) = \y -> if (x == y)
 
 
 zer = fromScope $ abstract1 "y" (Varg "y")
-r = outBind2 $ fromScope $ abstract1 "y" (Varg "x")
-l = inBind2 $ fromScope $ abstract1 "y" (Varg "x")
+-- r = outBind2 $ fromScope $ abstract1 "y" (Varg "x")
+-- l = inBind2 $ fromScope $ abstract1 "y" (Varg "x")
 
 r' = (fromScope $ abstract1 "y" (Varg "x"))
 
 -- x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
 -- z -> z+y -> v+zy -> x+vzy
 -- fun :: Scope () Term a -> Term a -> Term a
-fun t s x v = let tm = rta1 (rta1 (rta1 (fromScope t)))
-                  s2 = rta1 s
+fun t s x v = let tm = (rt swap12) $ (rt add1) $ (rt add1) $ (rt add1) $ fromScope t
+                  s2 = rt add1 s
                   tsub = (instantiate1 x (toScope tm))
                   tork = instantiate1 v (toScope tsub)
           in
    Lam s (toScope $ Lam s2 (toScope tork))
 
-inBool x = instantiate1 True x
-rta1 x = runIdentity (traverse add1 x)
 
-fals' = rta1 (rta1 (rta1 False))
-tru' = rta1 (rta1 True)
+
+inBool x = instantiate1 True x
+
+-- fals' = rta1 (rta1 (rta1 False))
+-- tru' = rta1 (rta1 True)
 
 ---

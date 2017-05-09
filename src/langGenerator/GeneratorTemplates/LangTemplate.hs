@@ -65,6 +65,9 @@ infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
 infer ctx (Var a) = ctx a
 infer ctx TyDef   = throwError "Can't have def : def"
 
+report :: String -> TC (Type a)
+report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
+
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 
@@ -86,6 +89,8 @@ infer0 = infer emptyCtx
 nf :: Term a -> Term a
 nf (Var a) = Var a
 nf TyDef   = TyDef
+
+rt f x = runIdentity (traverse f x)
 
 -- flatten on var (traverse rem_i x - lowers ctx by one)
 -- x y z. t --> x y. t
@@ -132,33 +137,33 @@ add4 (F (B x)) = pure $ F (B x)
 add4 (F (F (B x))) = pure $ F (F (B x))
 add4 (F x) = pure $ F (F x)
 
--- Add useless binders
-abstract0 :: Monad f => f a -> Scope b f a
-abstract0 = abstract (const Nothing)
-
--- y.x -> f y.x
-outBind1 :: Monad f => f a -> f (Var b a)
-outBind1 x = fromScope $ abstract0 x
-
--- y.x -> f1 f2 y.x
-outBind2 :: Monad f => f a -> f (Var b (Var b a))
-outBind2 = outBind1 . outBind1
-
--- y.x -> f1 f2 f3 y.x
-outBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
-outBind3 = outBind1 . outBind2
-
--- y.x -> y f.x
-inBind1 :: Functor f => f a -> f (Var b a)
-inBind1 x = F <$> x
-
--- y.x -> y f1 f2.x
-inBind2 :: Functor f => f a -> f (Var b (Var b a))
-inBind2 = inBind1 . inBind1
-
--- y.x -> y f1 f2 f3.x
-inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
-inBind3 = inBind1 . inBind2
+-- -- Add useless binders
+-- abstract0 :: Monad f => f a -> Scope b f a
+-- abstract0 = abstract (const Nothing)
+--
+-- -- y.x -> f y.x
+-- outBind1 :: Monad f => f a -> f (Var b a)
+-- outBind1 x = fromScope $ abstract0 x
+--
+-- -- y.x -> f1 f2 y.x
+-- outBind2 :: Monad f => f a -> f (Var b (Var b a))
+-- outBind2 = outBind1 . outBind1
+--
+-- -- y.x -> f1 f2 f3 y.x
+-- outBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+-- outBind3 = outBind1 . outBind2
+--
+-- -- y.x -> y f.x
+-- inBind1 :: Functor f => f a -> f (Var b a)
+-- inBind1 x = F <$> x
+--
+-- -- y.x -> y f1 f2.x
+-- inBind2 :: Functor f => f a -> f (Var b (Var b a))
+-- inBind2 = inBind1 . inBind1
+--
+-- -- y.x -> y f1 f2 f3.x
+-- inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+-- inBind3 = inBind1 . inBind2
 
 
 ------------- Swappers
@@ -179,33 +184,27 @@ swap13 (F (B x)) = pure (F $ B x)
 swap13 (F (F (B x))) = pure (B x)
 swap13 x = pure x
 
-swap21 = swap12
-swap32 = swap23
-swap31 = swap13
-
--- 2 vars
-infixl 1 >>>>=
-m >>>>= f = m >>>= lift . f
-
--- 3 vars
-infixl 1 >>>>>=
-m >>>>>= f = m >>>>= lift . f
-
--- 4 vars
-infixl 1 >>>>>>=
-m >>>>>>= f = m >>>>>= lift . f
-
--- 5 vars
-infixl 1 >>>>>>>=
-m >>>>>>>= f = m >>>>>>= lift . f
+-- n free vars
+ap2 m f = m >>>= (lift . f)
+ap3 m f = ap2 m (lift . f)
+ap4 m f = ap3 m (lift . f)
+ap5 m f = ap4 m (lift . f)
+ap6 m f = ap5 m (lift . f)
+ap7 m f = ap6 m (lift . f)
 
 ---------
 fromScope2 x = fromScope $ fromScope x
 fromScope3 x = fromScope $ fromScope2 x
 fromScope4 x = fromScope $ fromScope3 x
+fromScope5 x = fromScope $ fromScope4 x
+fromScope6 x = fromScope $ fromScope5 x
+fromScope7 x = fromScope $ fromScope6 x
 
 toScope2 x = toScope $ toScope x
 toScope3 x = toScope $ toScope2 x
 toScope4 x = toScope $ toScope3 x
+toScope5 x = toScope $ toScope4 x
+toScope6 x = toScope $ toScope5 x
+toScope7 x = toScope $ toScope6 x
 
 ---
