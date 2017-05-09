@@ -26,9 +26,15 @@ buildConsCtxExps :: [(VarName, Term)] -> BldRM [Exp]
 buildConsCtxExps [] = return []
 buildConsCtxExps xs = undefined
 
-buildCtxExps :: [Exp] -> [Exp]
-buildCtxExps jud = undefined
+-- given x,y,z,r -> check ctx TyDef x, check (consCtx x) TyDef y ...
+buildCtxCheckExps :: [Exp] -> [Exp]
+buildCtxCheckExps xs = helper xs []
+  where
+    helper [] _ = []
+    helper (x:xs) ys = appFun checkE [consCtxes (reverse ys), sortToExp tyName, x]
+      : helper xs (x:ys)
 
+-- consCtxes ["x","y","z"] -> consCtx z (consCtx y (consCtx x ctx))
 consCtxes :: [Exp] -> Exp
 consCtxes ctxExps = foldr (\x y -> appFun consCtxE [x,y]) ctxE (reverse ctxExps)
 
@@ -48,7 +54,7 @@ buildInferExps jud = do
   (f, ex, _) <- buildEq jud
   ctxExps <- buildConsCtxExps (_jContext jud)
   let inf = appFun infE [consCtxes ctxExps, ex]
-  let others = buildCtxExps ctxExps
+  let others = buildCtxCheckExps ctxExps
   return $ others ++ [f inf]
 
 buildEq :: Judgement -> BldRM (Exp -> Exp, Exp, Term)
@@ -61,7 +67,7 @@ buildEq j@(Equality _ l r _) = do
   ex <- buildTermExp ct l
   rex <- buildTermExp ct r
   let eq = eqCheckExp ex rex
-  return (\x -> infixApp eq (op (name ">>")) x , ex, l)
+  return (\x -> infixApp eq (op (sym ">>")) x , ex, l)
 
 infE = var (name "infer")
 checkE = var (name "check")
@@ -80,7 +86,7 @@ buildCheckExps jud = do
                then appFun infE [consCtxes ctxExps, ex]
                else appFun checkE [consCtxes ctxExps, sortToExp st,  ex]
 
-  let others = buildCtxExps ctxExps
+  let others = buildCtxCheckExps ctxExps
   return $ others ++ [f inf]
 
 
