@@ -11,8 +11,7 @@ import Language.Haskell.Exts.Simple
 import qualified Data.Map as Map
 
 import AST hiding (Var, name, Name)
-import qualified AST (Term(Var), Name(..))
-import AST.Axiom hiding (name)
+import qualified AST (Term(Var), Name)
 
 import CodeGen.Common hiding (count)
 

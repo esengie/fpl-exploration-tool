@@ -7,11 +7,8 @@ import Control.Lens
 import Language.Haskell.Exts.Simple
 
 import AST hiding (Var, name, Name)
-import qualified AST (Term(Var), Name(..))
-import AST.Axiom hiding (name)
 
 import CodeGen.Common hiding (count)
-import CodeGen.Infer.Common
 
 judCtx :: Judgement -> Ctx
 judCtx jud = jud^.jContext.to (map fst)

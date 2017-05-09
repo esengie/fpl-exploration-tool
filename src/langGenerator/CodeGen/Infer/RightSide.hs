@@ -19,7 +19,8 @@ import CodeGen.Infer.Helpers
 import CodeGen.Infer.Exprs
 
 buildRight :: (Map.Map AST.Name FunctionalSymbol) -> FunctionalSymbol -> Axiom -> ErrorM Exp
-buildRight fss fs ax = pure ExprHole -- runBM fss (buildRight' fs ax)
+buildRight fss fs ax = -- pure ExprHole
+  runBM fss (buildRight' fs ax)
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do

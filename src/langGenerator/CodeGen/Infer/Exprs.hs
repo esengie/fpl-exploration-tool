@@ -14,9 +14,7 @@ import qualified Data.Map as Map
 
 import AST hiding (Var, name, Name)
 import qualified AST (Term(Var))
-import AST.Axiom hiding (name)
 
-import CodeGen.Common hiding (count)
 import CodeGen.Infer.Common
 import CodeGen.Infer.Helpers
 import CodeGen.Infer.Solver
@@ -35,7 +33,7 @@ buildConsCtxExps lst = helper lst []
 
 -- given x,y,z,r -> check ctx TyDef x, check (consCtx x) TyDef y ...
 buildCtxCheckExps :: [Exp] -> [Exp]
-buildCtxCheckExps xs = helper xs []
+buildCtxCheckExps xs' = helper xs' []
   where
     helper [] _ = []
     helper (x:xs) ys = appFun checkE [consCtxes (reverse ys), sortToExp tyName, x]
@@ -56,7 +54,7 @@ checkHasNoType j = case jType j of Nothing -> return ()
 -- x, y |- infer (consCtx y (consCtx x))
 buildInferExps :: Judgement -> BldRM [Exp]
 buildInferExps jud = do
-  checkHasType jud
+  _ <- checkHasType jud
   -- if we have equality, then return a func: \x -> a = b >> x (+ exp & term)
   (f, ex, _) <- buildEq jud
   ctxExps <- buildConsCtxExps (_jContext jud)
@@ -118,13 +116,13 @@ conniveMeta ctx (oldCt, ex) =
       return $ appAdds adds (appSwaps swaps ex)
 
 appSwaps :: [Swapper] -> Exp -> Exp
-appSwaps lst ex = foldl (\ex (Sw x) -> swap x ex) ex lst
+appSwaps lst ex' = foldl (\ex (Sw x) -> swap x ex) ex' lst
 
 appRems :: [Remover] -> Exp -> Exp
-appRems lst ex = foldl (\ex (R x) -> infixApp ex (op (sym ">>=")) (rmv x)) ex lst
+appRems lst ex' = foldl (\ex (R x) -> infixApp ex (op (sym ">>=")) (rmv x)) ex' lst
 
 appAdds :: [Adder] -> Exp -> Exp
-appAdds lst ex = foldl (\ex (A x) -> add x ex) ex lst
+appAdds lst ex = foldl (\ex' (A x) -> add x ex') ex lst
 
 trimMeta :: Ctx -> (Ctx, Exp) -> BldRM (Ctx, Exp)
 trimMeta ctx (oldCt, ex) =
@@ -133,9 +131,9 @@ trimMeta ctx (oldCt, ex) =
       "error in sortchecking or impl " ++ show ctx ++ " isn't a subset of " ++ show oldCt
     else do
       -- need only removes
-      let (ctx, rems) = ctxTrimLtoR oldCt ctx
+      let (ctx', rems) = ctxTrimLtoR oldCt ctx
       -- a problem: we're in TC in rems, else we're in Identity!
-      return $ (ctx, appRems rems ex)
+      return $ (ctx', appRems rems ex)
 
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
