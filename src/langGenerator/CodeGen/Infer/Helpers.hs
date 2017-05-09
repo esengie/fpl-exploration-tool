@@ -39,9 +39,10 @@ buildVar :: Ctx -> VarName -> ErrorM Exp
 buildVar ct vn =
   let fs = repeat (tyCtor "F")
       bb = paren (app (tyCtor "B") unit_con)
+      tyCt = tyCtor "Var"
   in case elemIndex vn ct of
       Nothing -> throwError $ "Varible is not in context, sortchecking error!"
-      Just n -> return $ foldr (\x y -> paren $ app x y) bb (take (length ct - 1 - n) fs)
+      Just n -> return $ foldr (\x y -> paren $ app x y) bb (tyCt : take (length ct - 1 - n) fs)
 
 inst1 :: Exp -> Exp -> Exp -- generates instantiate1 v x code
 inst1 ex1 ex2 = app (app (var (name "instantiate1")) $ paren ex1)

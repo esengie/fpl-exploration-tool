@@ -4,7 +4,7 @@ module CodeGen.Infer.Exprs
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
-import Control.Lens
+import Control.Lens hiding (op)
 import Language.Haskell.Exts.Simple
 import Debug.Trace
 
@@ -20,15 +20,83 @@ import CodeGen.Common hiding (count)
 import CodeGen.Infer.Common
 import CodeGen.Infer.Helpers
 
-labelJudgement :: Judgement -> BldRM ()
-labelJudgement jud = undefined
+-- [x,y,z] -> [x, x.y, xy.z]
+-- but it's types
+buildConsCtxExps :: [(VarName, Term)] -> BldRM [Exp]
+buildConsCtxExps [] = return []
+buildConsCtxExps xs = undefined
+
+buildCtxExps :: [Exp] -> [Exp]
+buildCtxExps jud = undefined
+
+consCtxes :: [Exp] -> Exp
+consCtxes ctxExps = foldr (\x y -> appFun consCtxE [x,y]) ctxE (reverse ctxExps)
+
+checkHasType :: Judgement -> BldRM Term
+checkHasType j = case jType j of Nothing -> throwError $ show j ++ " has no type"
+                                 Just x -> return x
+checkHasNoType :: Judgement -> BldRM ()
+checkHasNoType j = case jType j of Nothing -> return ()
+                                   Just _ -> throwError $ show j ++ " has type"
 
 -- ctx, ctx, ctx, a = b >> infer cxzzczc
-buildInferExps :: Judgement -> [Exp]
-buildInferExps = undefined
+-- x, y |- infer (consCtx y (consCtx x))
+buildInferExps :: Judgement -> BldRM [Exp]
+buildInferExps jud = do
+  checkHasType jud
+  -- if we have equality, then return a func: \x -> a = b >> x (+ exp & term)
+  (f, ex, _) <- buildEq jud
+  ctxExps <- buildConsCtxExps (_jContext jud)
+  let inf = appFun infE [consCtxes ctxExps, ex]
+  let others = buildCtxExps ctxExps
+  return $ others ++ [f inf]
 
-buildCheckExps :: Judgement -> [Exp]
-buildCheckExps = undefined
+buildEq :: Judgement -> BldRM (Exp -> Exp, Exp, Term)
+buildEq j@(Statement _ tm _) = do
+  ex <- buildTermExp (judCtx j) tm
+  return (id, ex, tm)
+buildEq (Reduct{}) = throwError $ "Reduct in infer is an implem error"
+buildEq j@(Equality _ l r _) = do
+  let ct = judCtx j
+  ex <- buildTermExp ct l
+  rex <- buildTermExp ct r
+  let eq = eqCheckExp ex rex
+  return (\x -> infixApp eq (op (name ">>")) x , ex, l)
+
+infE = var (name "infer")
+checkE = var (name "check")
+ctxE = var (name "ctx")
+consCtxE = var (name "consCtx")
+sortToExp nm = tyCtor $ sortToTyCtor nm
+
+buildCheckExps :: Judgement -> BldRM [Exp]
+buildCheckExps jud = do
+  checkHasNoType jud
+  (f, ex, tm) <- buildEq jud
+  ctxExps <- buildConsCtxExps (_jContext jud)
+
+  st <- termSort tm
+  let inf = if st == tmName
+               then appFun infE [consCtxes ctxExps, ex]
+               else appFun checkE [consCtxes ctxExps, sortToExp st,  ex]
+
+  let others = buildCtxExps ctxExps
+  return $ others ++ [f inf]
+
+
+termSort :: Term -> BldRM SortName
+termSort (AST.Var _) = return tmName
+termSort (Meta mv) = do
+  st <- uses foralls (Map.lookup mv)
+  case st of
+    Nothing -> throwError $ "error in sortchecking, metavar not in foralls " ++ show mv
+    Just s -> return (getSortName s)
+termSort (Subst tm _ _) = termSort tm
+termSort (FunApp nm _) = do
+  st <- uses funsyms (Map.lookup nm)
+  case st of
+    Nothing -> throwError $ "error in sortchecking, funsym not in funsyms " ++ show nm
+    Just s -> return (getSortName $ result s)
 
 -- we take a metavar + its' term and transform it into a metavar in different ctx
 -- and return the transformation (it's context manipulation xzy.T -> yxz.T)
@@ -41,7 +109,7 @@ trimMeta ctx (oldCt, expr) = undefined
 
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
--- untyped => problematic
+-- returns as unscoped as can be
 buildTermExp :: Ctx -> Term -> BldRM Exp
 buildTermExp ctx (AST.Var vn) = lift $ buildVar ctx vn -- builds up stuff like F(F(F(F(B()))))
 buildTermExp ctx (Subst into vn what) = do

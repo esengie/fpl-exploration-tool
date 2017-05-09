@@ -71,5 +71,12 @@ appendExp ex = appendStmt (Qualifier ex)
 appendStmt :: Stmt -> BldRM ()
 appendStmt st = doStmts %= (++ [st])
 
+labelJudgement :: Judgement -> BldRM ()
+labelJudgement jud =
+  case jType jud of
+    Nothing -> juds.otherJuds %= (jud :)
+    Just (Meta mv) -> juds.metaTyDefs %= ((mv, jud) :)
+    Just tm -> juds.notDefsTy %= ((tm, jud) :)
+
 
 ---

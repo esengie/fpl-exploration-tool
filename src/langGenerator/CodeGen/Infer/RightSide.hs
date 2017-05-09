@@ -41,9 +41,9 @@ buildRight' fs ax = do
   -- returns checks for contexts and infers the part after |-
   -- equality goes like this "checkEq a b >> infer (consCtx v) a"
   -- [[Exp]]
-  expsMeta <- uses (juds.metaTyDefs) (mapM $ buildInferExps . snd)
   -- [MetaVar]
   metaJs <- use (juds.metaTyDefs)
+  expsMeta <- mapM (buildInferExps . snd) metaJs
   stmtsMeta <- mapM stmtsAndMetaLast $ zipWith
               (\(a,jud) c -> (a, judCtx jud,c))
               metaJs  expsMeta
@@ -51,15 +51,15 @@ buildRight' fs ax = do
   -- check metas for equality after all of them are added
   genCheckMetaEq
   ------------------------------------------------------------------------------
-  expsTyTms <- uses (juds.notDefsTy) (mapM $ buildInferExps . snd)
   ctTerms <- use (juds.notDefsTy)
+  expsTyTms <- mapM (buildInferExps . snd) ctTerms
   stmtsTyTms <- mapM stmtsAndTmEqLast $ zipWith
               (\(a,jud) c -> (a, judCtx jud,c))
               ctTerms expsTyTms
   mapM_ appendStmt (concat stmtsTyTms)
   ------------------------------------------------------------------------------
   -- a = b >> check ctx TyDef expr
-  expsDef <- uses (juds.otherJuds) (mapM buildCheckExps)
+  expsDef <- join $ uses (juds.otherJuds) (mapM buildCheckExps)
   mapM_ appendExp (concat expsDef)
 
   genReturnSt fs (conclusion ax)
