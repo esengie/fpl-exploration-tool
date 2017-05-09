@@ -117,7 +117,11 @@ conniveMeta :: Ctx -> (Ctx, Exp) -> BldRM Exp
 conniveMeta ctx (oldCt, expr) = undefined
 
 trimMeta :: Ctx -> (Ctx, Exp) -> BldRM (Ctx, Exp)
-trimMeta ctx (oldCt, expr) = undefined
+trimMeta ctx (oldCt, expr) =
+  if (not $ isSubset ctx oldCt)
+    then throwError $
+      "error in sortchecking or impl " ++ show ctx ++ " isn't a subset of " ++ show oldCt
+    else do 
 
 --------------------------------------------------------------------------------
 -- walk the term and build it var by var
