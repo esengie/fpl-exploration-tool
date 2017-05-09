@@ -23,8 +23,14 @@ import CodeGen.Infer.Helpers
 -- [x,y,z] -> [x, x.y, xy.z]
 -- but it's types
 buildConsCtxExps :: [(VarName, Term)] -> BldRM [Exp]
-buildConsCtxExps [] = return []
-buildConsCtxExps xs = undefined
+buildConsCtxExps lst = helper lst []
+  where
+    helper :: [(VarName, Term)] -> Ctx -> BldRM [Exp]
+    helper [] _ = return []
+    helper ((vn, tm): xs) ct = do
+      ex <- buildTermExp ct tm
+      exps <- helper xs (ct ++ [vn])
+      return (ex:exps)
 
 -- given x,y,z,r -> check ctx TyDef x, check (consCtx x) TyDef y ...
 buildCtxCheckExps :: [Exp] -> [Exp]
