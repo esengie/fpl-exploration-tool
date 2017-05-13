@@ -20,11 +20,10 @@ import AST.Axiom hiding (name)
 
 import CodeGen.Common
 import CodeGen.MonadInstance (funToPat)
-
-buildRight 
+import CodeGen.RightSide.Nf (buildRightNf)
 
 --------------------------------------------------------------------------
-bri = buildRight
+bri = buildRightNf
 fMap = Map.insert "f" fFunS Map.empty
 fFunS = (FunSym "f" [DepSort "asd" 12, DepSort "a" 22] (DepSort "as" 1))
 fTm = Subst (AST.Var "asd") "asd" (AST.Var "er")
@@ -54,10 +53,8 @@ genNf = do
   let fsyms = Map.elems (st^.SortCheck.funSyms)
   let fLeft = funLeft <$> fsyms
   -- We've checked our lang, can unJust
-  let fRight' = (\f -> buildRight (st^.SortCheck.funSyms)
-                                  f
-                                  $ (unJust . funToAx st) f)
-                                  <$> fsyms
+  let fRight' = (\f -> do reds <- reducts st f
+                          buildRightNf f reds) <$> fsyms
   fRight <- lift . lift $ sequence fRight'
 
   --- Gather and build a resulting function

@@ -5,7 +5,8 @@ module AST.Judgement(
   isEqJudgement,
   isRedJudgement,
   showCtx,
-  jContext
+  jContext,
+  judCtx
   )
   where
 
@@ -35,6 +36,8 @@ data Judgement =
 
 makeLenses ''Judgement
 
+judCtx :: Judgement -> Ctx
+judCtx jud = jud^.jContext.to (map fst)
 
 instance Show Judgement where
   show (Statement ctx tm Nothing) = concat [

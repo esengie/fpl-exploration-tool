@@ -10,9 +10,6 @@ import AST hiding (Var, name, Name)
 
 import CodeGen.Common hiding (count)
 
-judCtx :: Judgement -> Ctx
-judCtx jud = jud^.jContext.to (map fst)
-
 appFunS :: VarName -> [Exp] -> Exp
 appFunS nm lst = appFun (var $ name (caps nm)) lst
 
