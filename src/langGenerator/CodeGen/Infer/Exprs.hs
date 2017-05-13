@@ -147,7 +147,7 @@ buildTermExp ctx (Subst into vn what) = do
 buildTermExp ctx (Meta mv) = do
   res <- uses metas (Map.lookup mv)
   case res of
-    Nothing -> throwError $ "MetaVar " ++ show mv ++ " not found in terms"
+    Nothing -> throwError $ "Metavar " ++ show mv ++ " not found in terms"
     -- we store metavar values as list, but we fold it
     Just res' -> conniveMeta ctx (res' !! 0)
 buildTermExp ctx (FunApp nm lst) = do

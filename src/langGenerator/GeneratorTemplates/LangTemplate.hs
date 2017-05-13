@@ -167,22 +167,22 @@ add4 (F x) = pure $ F (F x)
 
 
 ------------- Swappers
-swap12 :: Var b (Var b a) -> Identity (Var b (Var b a))
-swap12 (B x) = pure (F (B x))
-swap12 (F (B x)) = pure (B x)
-swap12 x = pure x
+swap1'2 :: Var b (Var b a) -> Identity (Var b (Var b a))
+swap1'2 (B x) = pure (F (B x))
+swap1'2 (F (B x)) = pure (B x)
+swap1'2 x = pure x
 
-swap23 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
-swap23 (B x) = pure (B x)
-swap23 (F (B x)) = pure (F $ F $ B x)
-swap23 (F (F (B x))) = pure (F $ B x)
-swap23 x = pure x
+swap2'3 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
+swap2'3 (B x) = pure (B x)
+swap2'3 (F (B x)) = pure (F $ F $ B x)
+swap2'3 (F (F (B x))) = pure (F $ B x)
+swap2'3 x = pure x
 
-swap13 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
-swap13 (B x) = pure (F $ F $ B x)
-swap13 (F (B x)) = pure (F $ B x)
-swap13 (F (F (B x))) = pure (B x)
-swap13 x = pure x
+swap1'3 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
+swap1'3 (B x) = pure (F $ F $ B x)
+swap1'3 (F (B x)) = pure (F $ B x)
+swap1'3 (F (F (B x))) = pure (B x)
+swap1'3 x = pure x
 
 -- n free vars
 ap2 m f = m >>>= (lift . f)

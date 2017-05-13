@@ -52,13 +52,13 @@ swap :: (Int, Int) -> Exp -> Exp
 swap (n,m) ex
   | n == m = ex
   | n > m = swap (m,n) ex
-  | otherwise = appFun trE [var (name $ "swap" ++ show n ++ "'"  ++ show m), ex]
+  | otherwise = appFun rtE [var (name $ "swap" ++ show n ++ "'"  ++ show m), ex]
 
 rmv :: Int -> Exp
-rmv n = app trE $ var (name $ "rem" ++ show n)
+rmv n = app travE $ var (name $ "rem" ++ show n)
 
 add :: Int -> Exp -> Exp
-add n ex = appFun trE [var (name $ "add" ++ show n), ex]
+add n ex = appFun rtE [var (name $ "add" ++ show n), ex]
 
 generator :: VarName -> Exp -> Stmt
 generator vn ex = Generator (PVar $ name vn) ex
@@ -67,7 +67,8 @@ infE = var (name "infer")
 checkE = var (name "checkT")
 ctxE = var (name "ctx")
 consCtxE = var (name "consCtx")
-trE = var (name "tr")
+rtE = var (name "rt")
+travE = var (name "traverse")
 sortToExp nm = tyCtor $ sortToTyCtor nm
 
 ---
