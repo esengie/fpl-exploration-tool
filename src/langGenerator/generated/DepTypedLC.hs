@@ -154,7 +154,7 @@ zer =  abstract "y" (Varg "y")
 -- r = outBind2 $ fromScope $ abstract "y" (Varg "x")
 -- l = inBind2 $ fromScope $ abstract "y" (Varg "x")
 
-r' = ( abstract "y" (Varg "x"))
+r' = (fromScope $ abstract "y" (Varg "x"))
 
 -- x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
 -- z -> z+y -> v+zy -> x+vzy

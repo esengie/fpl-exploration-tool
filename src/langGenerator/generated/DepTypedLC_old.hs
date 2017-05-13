@@ -16,7 +16,7 @@ import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
 import Bound
 
-import LangTemplate (rem1, rem2, rem3, rem4,
+import LangTemplate_old (rem1, rem2, rem3, rem4,
                      ap2, ap3, ap4, ap5,
                      fromScope2, fromScope3, fromScope4,
                      toScope2, toScope3, toScope4,
@@ -85,7 +85,7 @@ nf (If a t x y) = case (nf t) of
 nf (Lam ty t)  = Lam (nf ty) (toScope $ nf $ fromScope t)
 nf (Pi ty t)   = Pi  (nf ty) (toScope $ nf $ fromScope t)
 nf (App t1 t2) = case (nf t1, nf t2) of
-      (Lam ty t1, t2) -> nf (instantiate t2 t1)
+      (Lam ty t1, t2) -> nf (instantiate1 t2 t1)
       (f, x)  -> App f x
 
 check :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
@@ -104,9 +104,9 @@ infer ctx Bool    = pure TyK
 infer ctx (If a t x y) = do
     check ctx Bool t
     check (consCtx Bool ctx) TyK (fromScope a)
-    check ctx (instantiate True a) x
-    check ctx (instantiate False a) y
-    pure . nf $ instantiate t a
+    check ctx (instantiate1 True a) x
+    check ctx (instantiate1 False a) y
+    pure . nf $ instantiate1 t a
 infer ctx (Lam ty t) = do
     check ctx TyK ty
     Pi ty . toScope <$> infer (consCtx ty ctx) (fromScope t)--(fromScope t)
@@ -122,7 +122,7 @@ infer ctx (App f x) = do
     case v of
       Pi ty t -> do
         check ctx ty x
-        pure . nf $ instantiate x t
+        pure . nf $ instantiate1 x t
       _ -> Left "can't apply non-function"
 
 emptyCtx :: Ctx a
@@ -134,13 +134,13 @@ infer0 = infer emptyCtx
 
 -- smart constructors
 lam :: Eq a => a -> Type a -> Term a -> Term a
-lam v ty t = Lam ty (abstract v t)
+lam v ty t = Lam ty (abstract1 v t)
 
 pi :: Eq a => a -> Type a -> Term a -> Term a
-pi v ty t = Pi ty (abstract v t)
+pi v ty t = Pi ty (abstract1 v t)
 
 iff :: Eq a => a -> Type a -> Term a -> Term a -> Term a -> Term a
-iff v ty t x y = If (abstract v ty) t x y
+iff v ty t x y = If (abstract1 v ty) t x y
 
 (==>) :: Type a -> Type a -> Type a -- non-dependent function type
 a ==> b = Pi a (Scope $ fmap (F . pure) b)
@@ -154,19 +154,19 @@ fromList ((x,t):xs) = \y -> if (x == y)
 
 
 
-zer = fromScope $ abstract "y" (Varg "y")
+zer = fromScope $ abstract1 "y" (Varg "y")
 -- r = outBind2 $ fromScope $ abstract "y" (Varg "x")
 -- l = inBind2 $ fromScope $ abstract "y" (Varg "x")
 
-r' = (fromScope $ abstract "y" (Varg "x"))
+r' = (fromScope $ abstract1 "y" (Varg "x"))
 
 -- x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
 -- z -> z+y -> v+zy -> x+vzy
 -- fun :: Scope () Term a -> Term a -> Term a
 fun t s x v = let tm = (rt swap1'2) $ (rt add1) $ (rt add1) $ (rt add1) $ fromScope t
                   s2 = rt add1 s
-                  tsub = (instantiate x (toScope tm))
-                  tork = instantiate v (toScope tsub)
+                  tsub = (instantiate1 x (toScope tm))
+                  tork = instantiate1 v (toScope tsub)
           in
    Lam s (toScope $ Lam s2 (toScope tork))
 
@@ -174,7 +174,7 @@ fun t s x v = let tm = (rt swap1'2) $ (rt add1) $ (rt add1) $ (rt add1) $ fromSc
 --   (s, Lam x y) -> Lam s ( y)
 --   _ -> s
 
-inBool x = instantiate True x
+-- inBool x = instantiate1 True x
 
 -- fals' = rta1 (rta1 (rta1 False))
 -- tru' = rta1 (rta1 True)

@@ -16,7 +16,8 @@ import Data.Functor.Classes
 import Data.Deriving (deriveShow1)
 
 data Var a = B | F a
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show)
+  -- Fun, Fold, Trav
 
 deriveShow1 ''Var
 
@@ -30,7 +31,7 @@ instance Eq1 Var where
   liftEq _ _ _ = False
 
 newtype Scope f a = Scope { fromScope :: f (Var a) }
-  deriving (Functor, Foldable, Traversable)
+  -- deriving(Functor, Foldable, Traversable)
 
 toScope :: f (Var a) -> Scope f a
 toScope = Scope
@@ -63,7 +64,7 @@ abstract x xs = Scope (fmap go xs) where
 
 instantiate :: Monad f => f a -> Scope f a -> f a
 instantiate x (Scope xs) = xs >>= go where
-  go B  = x
+  go B = x
   go (F y) = return y
 
 (>>>=) :: (Monad f) => Scope f a -> (a -> f b) -> Scope f b
@@ -83,6 +84,29 @@ instance Alternative Var where
     B <|> r = r
     l <|> _ = l
 
+--------------------------------------------------
+-- could be derived
+--------------------------------------------------------------------------------
+instance Functor Var where
+  fmap _ B = B
+  fmap f (F a) = F (f a)
+
+instance Foldable Var where
+  foldMap f (F a) = f a
+  foldMap _ _ = mempty
+
+instance Traversable Var where
+  traverse f (F a) = F <$> f a
+  traverse _ B = pure B
+
+instance Functor f => Functor (Scope f) where
+  fmap f (Scope a) = Scope (fmap (fmap f) a)
+
+instance Foldable f => Foldable (Scope f) where
+  foldMap f (Scope a) = foldMap (foldMap f) a
+
+instance Traversable f => Traversable (Scope f) where
+  traverse f (Scope a) = Scope <$> traverse (traverse f) a
 
 
 ---

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- May change name and add exports etc.
-module LangTemplate
+module LangTemplate_old
   where
 
 import Prelude hiding (pi, False, True)
