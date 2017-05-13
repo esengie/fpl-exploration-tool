@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module CodeGen.Infer.Common
+module CodeGen.RightSide.Common
   where
 
 import Control.Monad.State
@@ -29,6 +29,7 @@ data Q = Q {
   _juds  :: Juds,
   -- various counters - the outer monad will have to use this
   _toGen :: ToGen,
+  -- need this to get the kinds of funsyms
   _funsyms :: Map.Map AST.Name FunctionalSymbol
 }
 

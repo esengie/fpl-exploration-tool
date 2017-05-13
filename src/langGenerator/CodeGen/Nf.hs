@@ -1,4 +1,4 @@
-module CodeGen.Infer
+module CodeGen.Nf
 -- (
 --   genInfer
 -- )
@@ -9,7 +9,6 @@ import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
-import Debug.Trace
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -21,10 +20,11 @@ import AST.Axiom hiding (name)
 
 import CodeGen.Common
 import CodeGen.MonadInstance (funToPat)
-import CodeGen.RightSide.Infer (buildRightInfer)
+
+buildRight 
 
 --------------------------------------------------------------------------
-bri = buildRightInfer
+bri = buildRight
 fMap = Map.insert "f" fFunS Map.empty
 fFunS = (FunSym "f" [DepSort "asd" 12, DepSort "a" 22] (DepSort "as" 1))
 fTm = Subst (AST.Var "asd") "asd" (AST.Var "er")
@@ -32,41 +32,38 @@ fJud = Statement [] fTm Nothing
 fAx = Axiom "as" [] [] fJud
 --------------------------------------------------------------------------
 
-funInfer :: [[Pat]] -> [Exp] -> Decl
-funInfer pat exps = FunBind $ zipWith (\x y -> Match (Ident "infer") x (UnGuardedRhs y) Nothing) pat exps
+funNf :: [[Pat]] -> [Exp] -> Decl
+funNf pat exps = FunBind $ zipWith (\x y -> Match (Ident "nf") x (UnGuardedRhs y) Nothing) pat exps
 
 funLeft :: FunctionalSymbol -> [Pat]
-funLeft f = [PVar (Ident "ctx"), PParen $ funToPat f]
+funLeft f = [PParen $ funToPat f]
 
-errStarStar :: String -> Exp
-errStarStar str = App (Var (UnQual (Ident "report"))) (Lit (String str))
-
-genInfer :: GenM ()
-genInfer = do
+genNf :: GenM ()
+genNf = do
   st <- ask
 
   --- Var work
   let varL = funLeft (FunSym "Var" [varSort] varSort)
-  let varR = app (var $ name "ctx") (var $ name $ vars !! 0)
+  let varR = (var $ name $ vars !! 0)
   ------
-  --- Errors of type ty(*) = *
+  --- TyDefs
   let sortsL = (\x -> funLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
-  let sortsR = (errStarStar . sortToTyCtor) <$> sortsWO_tm st
+  let sortsR = (var . name . sortToTyCtor) <$> sortsWO_tm st
   ------
 
   let fsyms = Map.elems (st^.SortCheck.funSyms)
   let fLeft = funLeft <$> fsyms
   -- We've checked our lang, can unJust
-  let fRight' = (\f -> buildRightInfer (st^.SortCheck.funSyms)
-                                        f
-                                        $ (unJust . funToAx st) f)
-                                       <$> fsyms
+  let fRight' = (\f -> buildRight (st^.SortCheck.funSyms)
+                                  f
+                                  $ (unJust . funToAx st) f)
+                                  <$> fsyms
   fRight <- lift . lift $ sequence fRight'
 
   --- Gather and build a resulting function
-  let res = funInfer (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
+  let res = funNf (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
   lst <- get
-  (_ , n) <- getDecl "infer"
+  (_ , n) <- getDecl "nf"
   put lst{decls = replace n [res] (decls lst)}
 
 

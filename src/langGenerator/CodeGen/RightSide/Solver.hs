@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module CodeGen.Infer.Solver(
+module CodeGen.RightSide.Solver(
   ctxAddLtoR,
   ctxTrimLtoR,
   Adder(..),

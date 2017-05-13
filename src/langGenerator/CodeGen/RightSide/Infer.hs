@@ -1,5 +1,5 @@
-module CodeGen.Infer.RightSide(
-  buildRight
+module CodeGen.RightSide.Infer(
+  buildRightInfer
 ) where
 
 import Control.Monad.State
@@ -14,12 +14,12 @@ import qualified AST (Term(Var), Name)
 import AST.Axiom hiding (name)
 
 import CodeGen.Common hiding (count)
-import CodeGen.Infer.Common
-import CodeGen.Infer.Helpers
-import CodeGen.Infer.Exprs
+import CodeGen.RightSide.Common
+import CodeGen.RightSide.Helpers
+import CodeGen.RightSide.Exprs
 
-buildRight :: (Map.Map AST.Name FunctionalSymbol) -> FunctionalSymbol -> Axiom -> ErrorM Exp
-buildRight fss fs ax = -- pure ExprHole
+buildRightInfer :: (Map.Map AST.Name FunctionalSymbol) -> FunctionalSymbol -> Axiom -> ErrorM Exp
+buildRightInfer fss fs ax = -- pure ExprHole
   runBM fss (buildRight' fs ax)
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
@@ -143,7 +143,7 @@ genReturnSt (FunSym _ _ res) (Statement _ _ Nothing) = do
 genReturnSt _ (Statement _ _ (Just ty)) = do
   ret <- buildTermExp [] ty
   appendExp $ retExp ret
-genReturnSt _ _ = throwError "Can't have anything but funsym in conclusion"
+genReturnSt _ _ = throwError "Can't have anything but Statement in conclusion"
 
 
 

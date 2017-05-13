@@ -1,4 +1,4 @@
-module CodeGen.Infer.Exprs(
+module CodeGen.RightSide.Exprs(
   conniveMeta,
   trimMeta,
   buildTermExp,
@@ -15,9 +15,9 @@ import qualified Data.Map as Map
 import AST hiding (Var, name, Name)
 import qualified AST (Term(Var))
 
-import CodeGen.Infer.Common
-import CodeGen.Infer.Helpers
-import CodeGen.Infer.Solver
+import CodeGen.RightSide.Common
+import CodeGen.RightSide.Helpers
+import CodeGen.RightSide.Solver
 
 -- [x,y,z] -> [x, x.y, xy.z]
 -- but it's types

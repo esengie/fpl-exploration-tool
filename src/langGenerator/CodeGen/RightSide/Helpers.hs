@@ -1,4 +1,4 @@
-module CodeGen.Infer.Helpers
+module CodeGen.RightSide.Helpers
   where
 
 import Data.List
