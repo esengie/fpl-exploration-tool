@@ -9,7 +9,7 @@ FunctionalSymbols :
   lam : (ty , 0) * (tm , 1) -> tm
   app : (tm , 0) * (tm , 0) * (ty, 1) -> tm
   pi : (ty, 0) * (ty, 1) -> ty
-  sigma : (ty, 0) * (ty, 2) -> tm
+  sigma : (ty, 0) * (ty, 2) * (tm, 0) * (tm, 0) -> tm
 Axioms :
   Tr =
     forall
@@ -38,11 +38,11 @@ Axioms :
   -- [Stable - Bool]
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
-      |- t1 : pi(S, x.T) , x : S |- t2 : S |---- |- app(t1 , t2, x.T) : T[x:=t2]
+      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2, x.T) : T[x:=t2]
 
-  -- TSig =
-  --   forall t1 : tm , t2 : tm , S : ty, (x y).T : ty
-  --     |- t1 : pi(S, x.T[y:=true]) , |- t2 : S |---- |- sigma(S , (y x).T) : T[x:=t2][y:= t2]
+  TSig =
+    forall t1 : tm , t2 : tm , S : ty, (x y).T : ty, A : ty
+      |- t1 : pi(S, x.T[y:=true]) , x : A, y : A |- t2 : S |---- |- sigma(A, (y x).T, t2, t1) : T[x:=t2][y:= t2]
 
 Reductions :
   Beta = -- not impl
