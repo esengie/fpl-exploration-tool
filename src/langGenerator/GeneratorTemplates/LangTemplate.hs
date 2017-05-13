@@ -15,7 +15,7 @@ import Control.Monad.Trans (lift)
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
-import Bound
+import SimpleBound
 
 --- Don't make changes to the code here, may add you own functions and types
 --- Codegen affects infer and nf functions and Term datatype + its' Monad instance.
@@ -71,8 +71,8 @@ report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 
-consCtx :: Type a -> Ctx a -> Ctx (Var () a)
-consCtx ty ctx (B ()) = pure (F <$> ty)
+consCtx :: Type a -> Ctx a -> Ctx (Var a)
+consCtx ty ctx B = pure (F <$> ty)
 consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
 fromList :: Eq a => [(a, Type a)] -> Ctx a
@@ -94,47 +94,47 @@ rt f x = runIdentity (traverse f x)
 
 -- flatten on var (traverse rem_i x - lowers ctx by one)
 -- x y z. t --> x y. t
-rem1 :: Var b a -> TC a
-rem1 (B _) = Left "There is var at 1"
+rem1 :: Var a -> TC a
+rem1 B = Left "There is var at 1"
 rem1 (F x) = pure x
 
-add1 :: a -> Identity (Var b a)
+add1 :: a -> Identity (Var a)
 add1 x = pure $ F x
 
 -- x y z. t --> x z. t
-rem2 :: Var b (Var b a) -> TC (Var b a)
-rem2 (B x) = pure (B x)
-rem2 (F (B _)) = Left "There is var at 2"
+rem2 :: Var (Var a) -> TC (Var a)
+rem2 B = pure B
+rem2 (F B) = Left "There is var at 2"
 rem2 (F (F x)) = pure (F x)
 
-add2 :: Var b a -> Identity (Var b (Var b a))
-add2 (B x) = pure $ B x
+add2 :: Var a -> Identity (Var (Var a))
+add2 B = pure $ B
 add2 (F x) = pure $ F (F x)
 
 -- x y z. t --> y z. t
-rem3 :: Var b (Var b (Var b a)) -> TC (Var b (Var b a))
-rem3 (B a) = pure (B a)
-rem3 (F (B x)) = pure (F (B x))
-rem3 (F (F (B _))) = Left "There is var at 3"
+rem3 :: Var (Var (Var a)) -> TC (Var (Var a))
+rem3 (B ) = pure B
+rem3 (F (B )) = pure (F (B ))
+rem3 (F (F (B ))) = Left "There is var at 3"
 rem3 (F (F (F x))) = pure (F (F x))
 
-add3 :: Var b (Var b a) -> Identity (Var b (Var b (Var b a)))
-add3 (B x) = pure $ B x
-add3 (F (B x)) = pure $ F (B x)
+add3 :: Var (Var a) -> Identity (Var (Var (Var a)))
+add3 (B ) = pure $ B
+add3 (F (B )) = pure $ F (B )
 add3 (F x) = pure $ F (F x)
 
 -- r x y z. t --> x y z. t
-rem4 :: Var b (Var b (Var b (Var b a))) -> TC (Var b (Var b (Var b a)))
-rem4 (B a) = pure (B a)
-rem4 (F (B x)) = pure (F (B x))
-rem4 (F (F (B x))) = pure (F (F (B x)))
-rem4 (F (F (F (B _)))) = Left "There is var at 4"
+rem4 :: Var (Var (Var (Var a))) -> TC (Var (Var (Var a)))
+rem4 (B ) = pure (B )
+rem4 (F (B )) = pure (F (B ))
+rem4 (F (F (B ))) = pure (F (F (B )))
+rem4 (F (F (F (B )))) = Left "There is var at 4"
 rem4 (F (F (F (F x)))) = pure (F (F (F x)))
 
-add4 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b (Var b a))))
-add4 (B x) = pure $ B x
-add4 (F (B x)) = pure $ F (B x)
-add4 (F (F (B x))) = pure $ F (F (B x))
+add4 :: Var (Var (Var a)) -> Identity (Var (Var (Var (Var a))))
+add4 (B ) = pure $ B
+add4 (F (B )) = pure $ F (B )
+add4 (F (F (B ))) = pure $ F (F (B ))
 add4 (F x) = pure $ F (F x)
 
 -- -- Add useless binders
@@ -142,46 +142,46 @@ add4 (F x) = pure $ F (F x)
 -- abstract0 = abstract (const Nothing)
 --
 -- -- y.x -> f y.x
--- outBind1 :: Monad f => f a -> f (Var b a)
+-- outBind1 :: Monad f => f a -> f (Var  a)
 -- outBind1 x = fromScope $ abstract0 x
 --
 -- -- y.x -> f1 f2 y.x
--- outBind2 :: Monad f => f a -> f (Var b (Var b a))
+-- outBind2 :: Monad f => f a -> f (Var  (Var  a))
 -- outBind2 = outBind1 . outBind1
 --
 -- -- y.x -> f1 f2 f3 y.x
--- outBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+-- outBind3 :: Monad f => f a -> f (Var  (Var  (Var  a)))
 -- outBind3 = outBind1 . outBind2
 --
 -- -- y.x -> y f.x
--- inBind1 :: Functor f => f a -> f (Var b a)
+-- inBind1 :: Functor f => f a -> f (Var  a)
 -- inBind1 x = F <$> x
 --
 -- -- y.x -> y f1 f2.x
--- inBind2 :: Functor f => f a -> f (Var b (Var b a))
+-- inBind2 :: Functor f => f a -> f (Var  (Var  a))
 -- inBind2 = inBind1 . inBind1
 --
 -- -- y.x -> y f1 f2 f3.x
--- inBind3 :: Monad f => f a -> f (Var b (Var b (Var b a)))
+-- inBind3 :: Monad f => f a -> f (Var  (Var  (Var  a)))
 -- inBind3 = inBind1 . inBind2
 
 
 ------------- Swappers
-swap1'2 :: Var b (Var b a) -> Identity (Var b (Var b a))
-swap1'2 (B x) = pure (F (B x))
-swap1'2 (F (B x)) = pure (B x)
+swap1'2 :: Var  (Var  a) -> Identity (Var  (Var  a))
+swap1'2 (B ) = pure (F (B ))
+swap1'2 (F (B )) = pure (B)
 swap1'2 x = pure x
 
-swap2'3 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
-swap2'3 (B x) = pure (B x)
-swap2'3 (F (B x)) = pure (F $ F $ B x)
-swap2'3 (F (F (B x))) = pure (F $ B x)
+swap2'3 :: Var  (Var  (Var  a)) -> Identity (Var  (Var  (Var  a)))
+swap2'3 (B ) = pure (B )
+swap2'3 (F (B )) = pure (F $ F $ B )
+swap2'3 (F (F (B ))) = pure (F $ B )
 swap2'3 x = pure x
 
-swap1'3 :: Var b (Var b (Var b a)) -> Identity (Var b (Var b (Var b a)))
-swap1'3 (B x) = pure (F $ F $ B x)
-swap1'3 (F (B x)) = pure (F $ B x)
-swap1'3 (F (F (B x))) = pure (B x)
+swap1'3 :: Var  (Var  (Var  a)) -> Identity (Var  (Var  (Var  a)))
+swap1'3 (B ) = pure (F $ F $ B )
+swap1'3 (F (B )) = pure (F $ B )
+swap1'3 (F (F (B ))) = pure (B )
 swap1'3 x = pure x
 
 -- n free vars

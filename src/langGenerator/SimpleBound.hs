@@ -4,8 +4,8 @@ module SimpleBound(
     Scope(..),
     toScope,
     (>>>=),
-    abstract1,
-    instantiate1,
+    abstract,
+    instantiate,
     Var(..)
 ) where
 
@@ -65,12 +65,6 @@ instantiate :: Monad f => f a -> Scope f a -> f a
 instantiate x (Scope xs) = xs >>= go where
   go B  = x
   go (F y) = return y
-
-abstract1 :: (Functor f, Eq a) => a -> f a -> Scope f a
-abstract1 = abstract
-
-instantiate1 :: Monad f => f a -> Scope f a -> f a
-instantiate1 = instantiate
 
 (>>>=) :: (Monad f) => Scope f a -> (a -> f b) -> Scope f b
 m >>>= f = m >>= lift . f

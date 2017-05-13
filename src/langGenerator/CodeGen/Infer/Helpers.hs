@@ -29,14 +29,14 @@ tyCtor st = Con (UnQual (Ident st))
 buildVar :: Ctx -> VarName -> ErrorM Exp
 buildVar ct vn =
   let fs = repeat (tyCtor "F")
-      bb = (app (tyCtor "B") unit_con)
+      bb = (tyCtor "B")
       tyCt = tyCtor "Var"
   in case elemIndex vn ct of
       Nothing -> throwError $ "Varible is not in context, sortchecking error!"
       Just n -> return $ foldr (\x y -> app x y) bb (tyCt : take (length ct - 1 - n) fs)
 
-inst1 :: Exp -> Exp -> Exp -- generates instantiate1 v x code
-inst1 ex1 ex2 = appFun (var (name "instantiate1")) [ex1, ex2]
+inst1 :: Exp -> Exp -> Exp -- generates instantiate v x code
+inst1 ex1 ex2 = appFun (var (name "instantiate")) [ex1, ex2]
 
 toScope :: Int -> Exp -> Exp
 toScope n ex | n < 1 = ex

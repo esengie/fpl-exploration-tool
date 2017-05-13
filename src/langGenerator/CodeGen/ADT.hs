@@ -25,8 +25,8 @@ ctorDecl nm = ConDecl (Ident nm)
 tyCon nm = TyCon $ UnQual (Ident nm)
 -- unit
 unitT = TyCon $ Special UnitCon
--- Scope ()
-scope1 = TyApp (tyCon "Scope") unitT
+-- Scope
+scope1 = (tyCon "Scope")
 -- data Term a = ...
 termA = DataDecl DataType Nothing (DHApp (DHead (Ident "Term")) (UnkindedVar (Ident "a")))
 -- Var a
