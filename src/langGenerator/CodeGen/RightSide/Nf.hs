@@ -39,46 +39,41 @@ buildNf' :: Int -> Reduction -> BldRM Match
 buildNf' cnt red = do
   -- populate foralls
   populateForalls (forallVars red)
-  -- gen left side & write all metas given as args
-  leftFun <- buildLeft cnt (conclusion red)
-  -- check metas for equality and leave only one in map if many
+  -- gen left side & write all metas given as args -- don't mess with contexts
+  leftFun <- buildLeft (cnt + 1) (conclusion red)
+  -- shorten & check metas for equality and leave only one in map if many
+  -- xyc.Z -> forallCtx(Z)
+  genShortenMetas
   genCheckMetaEq
   genReturnSt (conclusion red)
   -- this time we get the stms and wrap them in 'case' exp
-  inside <- uses doStmts doE
+  inside <- uses doStmts doExp
 
   return $ Match nf'N
-                [leftFun]
+                leftFun
                 (UnGuardedRhs $ caseRight cnt inside)
                 Nothing
 
 --------------------------------------------------------------------------------
 -- only conceptually different part from infer
-buildLeft :: Int -> Judgement -> BldRM Pat
-buildLeft = undefined
+buildLeft :: Int -> Judgement -> BldRM [Pat]
+buildLeft n (Reduct _ l _ _) = do
+  pat <- buildTermPat [] l
+  return [buildCntP n, PAsPat tmAlias pat]
 
--- -- first vars are already used
--- -- also axioms are always of the form like this
--- correctFresh :: Axiom -> BldRM ()
--- correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
---   where
---     populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
---       v <- fresh
---       metas %= updateMap (MetaVar ct nm) (fromScope (length ct) $ var (name v))
---       populateSt xs
---     populateSt [] = return ()
---     populateSt _ = throwError "Can't have a non metavariable in an axiom concl"
--- correctFresh _ = throwError $ "error: Only axioms with funsym intro are allowed"
---
-
+buildLeft _ _ = throwError "Can't have anything but Reduct in conclusion"
 
 --------------------------------------------------------------------------------
+genShortenMetas :: BldRM ()
+genShortenMetas = return ()
+
 genReturnSt :: Judgement -> BldRM ()
-genReturnSt (Reduct _ r _) = do
+genReturnSt (Reduct _ _ r _) = do
   ret <- buildTermExp [] r
   appendExp $ retExp ret
 genReturnSt _ = throwError "Can't have anything but Reduct in conclusion"
 
+--------------------------------------------------------------------------------
 -- given a funsym generates its' args' normalisations according to their ctx
 normalise :: [ContextDepth] -> [Exp]
 normalise lst = (\(n, v) -> nf n (var $ name v)) <$> lst'
@@ -97,9 +92,6 @@ caseRight cnt ex = caseE ex [alt (pApp (name "Left") [PWildCard])
 -- we call U(U(Bot))
 nonMatch :: Int -> Exp
 nonMatch n = appFun (var nf'N) [buildCnt n, var tmAlias]
-
-tmAlias = name ("tmAlias")
-nf'N = name "nf'"
 
 
 

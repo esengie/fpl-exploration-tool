@@ -84,6 +84,7 @@ nf (App t1 t2) = nf' (U(Bot)) (App (nf t1) (nf t2))
 nf' (U(U _)) (If a True x y) = nf x
 nf' (U _)    (If a False x y) = nf x
 nf' (U _) (App (Lam ty t1) t2) = nf (instantiate t2 t1)
+nf' _ (Bg (Scope (Scope tm)) t) = Bg (toScope $ toScope $ nf tm) t
 nf' _ x = x
 
 

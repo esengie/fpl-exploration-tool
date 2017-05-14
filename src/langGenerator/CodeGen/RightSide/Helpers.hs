@@ -35,11 +35,24 @@ buildCntP n = pApp (name "U") [buildCntP (n-1)]
 buildVar :: Ctx -> VarName -> ErrorM Exp
 buildVar ct vn =
   let fs = repeat (tyCtor "F")
-      bb = (tyCtor "B")
+      bb = tyCtor "B"
       tyCt = tyCtor "Var"
   in case elemIndex vn ct of
       Nothing -> throwError $ "Varible is not in context, sortchecking error!"
-      Just n -> return $ foldr (\x y -> app x y) bb (tyCt : take (length ct - 1 - n) fs)
+      Just n -> return $ foldr app bb (tyCt : take (length ct - 1 - n) fs)
+
+buildVarPat :: Ctx -> VarName -> ErrorM Pat
+buildVarPat ct vn = do
+  v <- buildVar ct vn
+  case (parsePat $ prettyPrint v) of
+    ParseOk x -> return x
+    _ -> throwError "lol error in buildVarPat"
+  -- let fs = repeat (name "F")
+  --     bb = pvar $ name "B"
+  --     tyCt = name "Var"
+  -- in case elemIndex vn ct of
+  --     Nothing -> throwError $ "Varible is not in context, sortchecking error!"
+  --     Just n -> return $ foldr (\x y -> pApp x [y]) bb (tyCt : take (length ct - 1 - n) fs)
 
 inst1 :: Exp -> Exp -> Exp -- generates instantiate v x code
 inst1 ex1 ex2 = appFun (var (name "instantiate")) [ex1, ex2]
@@ -47,6 +60,12 @@ inst1 ex1 ex2 = appFun (var (name "instantiate")) [ex1, ex2]
 nf :: Int -> Exp -> Exp
 nf n ex | n < 1 = app (var (name "nf")) ex
       | otherwise = app (var (name $ "nf" ++ show n)) ex
+
+
+unScope :: Int -> Pat -> Pat
+unScope n p | n < 1 = p
+      | n == 1 = pApp (name "Scope") [p]
+      | otherwise = pApp (name "Scope") [unScope (n-1) p]
 
 toScope :: Int -> Exp -> Exp
 toScope n ex | n < 1 = ex
@@ -80,5 +99,11 @@ consCtxE = var (name "consCtx")
 rtE = var (name "rt")
 travE = var (name "traverse")
 sortToExp nm = tyCtor $ sortToTyCtor nm
+tmAlias = name ("tmAlias")
+nf'N = name "nf'"
+unScopeP p = pApp (name "Scope") [p]
+
+doExp ((Qualifier x):[]) = x
+doExp xs = doE xs
 
 ---

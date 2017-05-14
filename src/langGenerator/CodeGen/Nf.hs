@@ -38,24 +38,24 @@ funNf' ms = FunBind (ms ++ [Match (Ident "nf'")
                                   (UnGuardedRhs $ var (name "x"))
                                   Nothing])
 
-funLeft :: FunctionalSymbol -> [Pat]
-funLeft f = [PParen $ funToPat f]
+fsymLeft :: FunctionalSymbol -> [Pat]
+fsymLeft f = [funToPat f]
 
 genNf :: GenM ()
 genNf = do
   st <- ask
 
   --- Var work
-  let varL = funLeft (FunSym "Var" [varSort] varSort)
+  let varL = fsymLeft (FunSym "Var" [varSort] varSort)
   let varR = app (tyCtor "Var") (var $ name $ vars !! 0)
   ------
   --- TyDefs
-  let sortsL = (\x -> funLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
+  let sortsL = (\x -> fsymLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
   let sortsR = (var . name . sortToTyCtor) <$> sortsWO_tm st
   ------
 
   let fsyms = Map.elems (st^.SortCheck.funSyms)
-  let fLeft = funLeft <$> fsyms
+  let fLeft = fsymLeft <$> fsyms
   -- We've checked our lang, can unJust
   let fRight' = (\f -> do reds <- reducts st f
                           buildRightNf f reds) <$> fsyms

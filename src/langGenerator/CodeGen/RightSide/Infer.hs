@@ -61,7 +61,7 @@ buildRight' fs ax = do
   mapM_ appendExp (concat expsDef)
 
   genReturnSt fs (conclusion ax)
-  uses doStmts doE
+  uses doStmts doExp
 
 -- >>= \t -> remvars (Metavar) this
 stmtsAndMetaLast :: (MetaVar, Ctx, [Exp]) -> BldRM [Stmt]
@@ -129,9 +129,8 @@ genMetaEq [] = return []
 genMetaEq (x : []) = return [x]
 genMetaEq (tm : y'@(ct2, y) : xs) = do
   ex <- conniveMeta ct2 tm
-  let ex' = eqCheckExp (toScope (length ct2) ex) y
+  let ex' = eqCheckExp ex y
   appendExp ex'
-
   genMetaEq (y' : xs)
 
 --------------------------------------------------------------------------------
