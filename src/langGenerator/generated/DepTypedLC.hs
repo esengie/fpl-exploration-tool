@@ -20,7 +20,7 @@ import LangTemplate (rem1, rem2, rem3, rem4,
                      ap2, ap3, ap4, ap5,
                      add1, add2, add3, add4,
                      swap2'3, swap1'3, swap1'2,
-                     rt)
+                     rt, Cnt(..))
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
@@ -69,22 +69,24 @@ instance Monad Term where
   App t1 t2 >>= f = App (t1 >>= f) (t2 >>= f)
   Bg t1 t2 >>= f = Bg (t1 `ap2` f) (t2 >>= f)
 
--- from reductions
+
 nf :: Term a -> Term a
 nf (Varg a) = Varg a
 nf TyK     = TyK
 nf True    = True
 nf False   = False
 nf Bool    = Bool
-nf (If a t x y) = case (nf t) of
-      True  -> (nf x)
-      False -> (nf y)
-      x -> If (toScope $ nf $ fromScope a) x (nf x) (nf y)
+nf (If a t x y) = nf' (U(U(Bot))) (If (toScope $ nf $ fromScope a) (nf t) (nf x) (nf y))
 nf (Lam ty t)  = Lam (nf ty) (toScope $ nf $ fromScope t)
 nf (Pi ty t)   = Pi  (nf ty) (toScope $ nf $ fromScope t)
-nf (App t1 t2) = case (nf t1, nf t2) of
-      (Lam ty t1, t2) -> nf (instantiate t2 t1)
-      (f, x)  -> App f x
+nf (App t1 t2) = nf' (U(Bot)) (App (nf t1) (nf t2))
+
+nf' (U(U _)) (If a True x y) = nf x
+nf' (U _)    (If a False x y) = nf x
+nf' (U _) (App (Lam ty t1) t2) = nf (instantiate t2 t1)
+nf' _ x = x
+
+
 
 check :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
 check ctx want t = do

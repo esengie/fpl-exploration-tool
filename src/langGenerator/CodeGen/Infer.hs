@@ -32,11 +32,8 @@ fJud = Statement [] fTm Nothing
 fAx = Axiom "as" [] [] fJud
 --------------------------------------------------------------------------
 
-funInfer :: [[Pat]] -> [Exp] -> Decl
-funInfer pat exps = FunBind $ zipWith (\x y -> Match (Ident "infer") x (UnGuardedRhs y) Nothing) pat exps
-
-funLeft :: FunctionalSymbol -> [Pat]
-funLeft f = [PVar (Ident "ctx"), PParen $ funToPat f]
+fsymLeft :: FunctionalSymbol -> [Pat]
+fsymLeft f = [PVar (Ident "ctx"), PParen $ funToPat f]
 
 errStarStar :: String -> Exp
 errStarStar str = App (Var (UnQual (Ident "report"))) (Lit (String str))
@@ -46,16 +43,16 @@ genInfer = do
   st <- ask
 
   --- Var work
-  let varL = funLeft (FunSym "Var" [varSort] varSort)
+  let varL = fsymLeft (FunSym "Var" [varSort] varSort)
   let varR = app (var $ name "ctx") (var $ name $ vars !! 0)
   ------
   --- Errors of type ty(*) = *
-  let sortsL = (\x -> funLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
+  let sortsL = (\x -> fsymLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
   let sortsR = (errStarStar . sortToTyCtor) <$> sortsWO_tm st
   ------
 
   let fsyms = Map.elems (st^.SortCheck.funSyms)
-  let fLeft = funLeft <$> fsyms
+  let fLeft = fsymLeft <$> fsyms
   -- We've checked our lang, can unJust
   let fRight' = (\f -> buildRightInfer (st^.SortCheck.funSyms)
                                         f
@@ -64,11 +61,8 @@ genInfer = do
   fRight <- lift . lift $ sequence fRight'
 
   --- Gather and build a resulting function
-  let res = funInfer (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
-  lst <- get
-  (_ , n) <- getDecl "infer"
-  put lst{decls = replace n [res] (decls lst)}
-
+  let res = funLeft "infer" (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
+  replaceDecls "infer" [res]
 
 
 

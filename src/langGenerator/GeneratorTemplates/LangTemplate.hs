@@ -90,7 +90,17 @@ nf :: Term a -> Term a
 nf (Var a) = Var a
 nf TyDef   = TyDef
 
+nf':: Cnt -> Term a -> Term a
+nf' = undefined
+
 rt f x = runIdentity (traverse f x)
+
+nf1 x = (toScope $ nf $ fromScope x)
+nf2 x = (toScope2 $ nf $ fromScope2 x)
+nf3 x = (toScope3 $ nf $ fromScope3 x)
+nf4 x = (toScope4 $ nf $ fromScope4 x)
+nf5 x = (toScope5 $ nf $ fromScope5 x)
+nf6 x = (toScope6 $ nf $ fromScope6 x)
 
 -- flatten on var (traverse rem_i x - lowers ctx by one)
 -- x y z. t --> x y. t
@@ -206,5 +216,9 @@ toScope4 x = toScope $ toScope3 x
 toScope5 x = toScope $ toScope4 x
 toScope6 x = toScope $ toScope5 x
 toScope7 x = toScope $ toScope6 x
+
+
+data Cnt = Bot | U (Cnt)
+  deriving(Eq, Show)
 
 ---

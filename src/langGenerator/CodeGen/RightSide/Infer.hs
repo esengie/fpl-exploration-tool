@@ -1,5 +1,7 @@
 module CodeGen.RightSide.Infer(
-  buildRightInfer
+  buildRightInfer,
+  populateForalls,
+  genCheckMetaEq
 ) where
 
 import Control.Monad.State
@@ -25,7 +27,7 @@ buildRightInfer fss fs ax = -- pure ExprHole
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
   -- populate foralls
-  populateForalls ax
+  populateForalls (forallVars ax)
   -- write all metas given as args
   correctFresh ax
   -- check metas for equality and leave only one in map if many
@@ -107,14 +109,11 @@ correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
     populateSt _ = throwError "Can't have a non metavariable in an axiom concl"
 correctFresh _ = throwError $ "error: Only axioms with funsym intro are allowed"
 
-populateForalls :: Axiom -> BldRM ()
-populateForalls (Axiom _ lst _ _) = populateSt lst
-  where
-    populateSt :: [(MetaVar, Sort)] -> BldRM ()
-    populateSt [] = return ()
-    populateSt ((m, sort):xs) = do
-      foralls %= Map.insert m sort
-      populateSt xs
+populateForalls :: [(MetaVar, Sort)] -> BldRM ()
+populateForalls [] = return ()
+populateForalls ((m, sort):xs) = do
+  foralls %= Map.insert m sort
+  populateForalls xs
 
 --------------------------------------------------------------------------------
 -- Check terms for equality
@@ -134,7 +133,6 @@ genMetaEq (tm : y'@(ct2, y) : xs) = do
   appendExp ex'
 
   genMetaEq (y' : xs)
-
 
 --------------------------------------------------------------------------------
 genReturnSt :: FunctionalSymbol -> Judgement -> BldRM ()

@@ -22,6 +22,15 @@ eqCheckExp ex1 ex2 = app (app (var (name "checkEq")) ex1) ex2
 tyCtor :: String -> Exp
 tyCtor st = Con (UnQual (Ident st))
 
+buildCnt :: Int -> Exp
+buildCnt 0 = tyCtor "Bot"
+buildCnt n = app (tyCtor "U") $ buildCnt (n-1)
+
+buildCntP :: Int -> Pat
+buildCntP 0 = PWildCard
+buildCntP n = pApp (name "U") [buildCntP (n-1)]
+
+
 -- txyz : x = F(F(B()))
 buildVar :: Ctx -> VarName -> ErrorM Exp
 buildVar ct vn =
@@ -34,6 +43,10 @@ buildVar ct vn =
 
 inst1 :: Exp -> Exp -> Exp -- generates instantiate v x code
 inst1 ex1 ex2 = appFun (var (name "instantiate")) [ex1, ex2]
+
+nf :: Int -> Exp -> Exp
+nf n ex | n < 1 = app (var (name "nf")) ex
+      | otherwise = app (var (name $ "nf" ++ show n)) ex
 
 toScope :: Int -> Exp -> Exp
 toScope n ex | n < 1 = ex

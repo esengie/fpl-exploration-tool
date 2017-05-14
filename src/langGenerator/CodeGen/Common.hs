@@ -71,6 +71,9 @@ sortToTyCtor x = caps x ++ "Def"
 
 fname = "f"
 
+funLeft :: String -> [[Pat]] -> [Exp] -> Decl
+funLeft nm pat exps = FunBind $ zipWith (\x y -> Match (Ident nm) x (UnGuardedRhs y) Nothing) pat exps
+
 sortToTyName :: String -> String
 sortToTyName nm
   | nm == tmName = "Term"
@@ -86,6 +89,13 @@ caps x = Char.toUpper (head x) : tail x
 
 replace :: Pos -> [a] -> [a] -> [a]
 replace n xs lst = (take n lst) ++ xs ++ (drop (n + 1) lst)
+
+replaceDecls :: String -> [Decl] -> GenM ()
+replaceDecls nm res = do
+  lst <- get
+  (_ , n) <- getDecl nm
+  put lst{decls = replace n res (decls lst)}
+
 
 dummyDecl = [((fromParseResult . parseDecl) "x = 1212312323123123213")]
 

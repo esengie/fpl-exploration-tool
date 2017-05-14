@@ -21,6 +21,7 @@ import AST.Axiom hiding (name)
 import CodeGen.Common
 import CodeGen.MonadInstance (funToPat)
 import CodeGen.RightSide.Nf (buildRightNf)
+import CodeGen.RightSide.Helpers (tyCtor)
 
 --------------------------------------------------------------------------
 bri = buildRightNf
@@ -31,8 +32,11 @@ fJud = Statement [] fTm Nothing
 fAx = Axiom "as" [] [] fJud
 --------------------------------------------------------------------------
 
-funNf :: [[Pat]] -> [Exp] -> Decl
-funNf pat exps = FunBind $ zipWith (\x y -> Match (Ident "nf") x (UnGuardedRhs y) Nothing) pat exps
+funNf' :: [Match] -> Decl
+funNf' ms = FunBind (ms ++ [Match (Ident "nf'")
+                                  [PWildCard, pvar (name "x")]
+                                  (UnGuardedRhs $ var (name "x"))
+                                  Nothing])
 
 funLeft :: FunctionalSymbol -> [Pat]
 funLeft f = [PParen $ funToPat f]
@@ -43,7 +47,7 @@ genNf = do
 
   --- Var work
   let varL = funLeft (FunSym "Var" [varSort] varSort)
-  let varR = (var $ name $ vars !! 0)
+  let varR = app (tyCtor "Var") (var $ name $ vars !! 0)
   ------
   --- TyDefs
   let sortsL = (\x -> funLeft $ FunSym (sortToTyCtor x) [] varSort) <$> sortsWO_tm st
@@ -56,13 +60,13 @@ genNf = do
   let fRight' = (\f -> do reds <- reducts st f
                           buildRightNf f reds) <$> fsyms
   fRight <- lift . lift $ sequence fRight'
+  let nfRs = fst <$> fRight
+  let nf'Rs = concat (snd <$> fRight)
 
   --- Gather and build a resulting function
-  let res = funNf (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
-  lst <- get
-  (_ , n) <- getDecl "nf"
-  put lst{decls = replace n [res] (decls lst)}
-
+  let res = funLeft "nf" (varL : sortsL ++ fLeft) (varR : sortsR ++ nfRs)
+  replaceDecls "nf" [res]
+  replaceDecls "nf'" [funNf' nf'Rs]
 
 
 
