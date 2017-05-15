@@ -73,7 +73,7 @@ checkTerm' meta ctx fa@(FunApp f args) = do
         ctx'' <- checkCtxShadowing ctx ctx'
         srt <- checkTerm' meta ctx'' tm
         lift $ addToCtx (length ctx') srt) args
-      unless (all (uncurry (==)) (zip needS haveS)) $
+      unless (needS == haveS) $
         throwError $ "Arg sorts don't match, need:\n\t" ++ show needS ++
           "\nbut have:\n\t" ++ show haveS ++ "\nin: " ++ show fa
       return res

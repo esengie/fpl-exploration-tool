@@ -50,9 +50,13 @@ Reductions :
       -- |--- |- app(b[x:=a], a) => b[x := a] : T[x:=a]
        |--- |- app(lam(A , x.app(a, b, z.T)) , a, z.T) => b[x := a] -- : T[z:=a]
 
-  IfRed =
+  IfRed1 =
     forall x.A : ty, f : tm , g : tm
-      |--- |- if(x.A, true, f, g) => f : A[x:=true]
+      |--- |- if(x.A, true, f, g) => f  -- : A[x:=true]
+
+  IfRed2 =
+    forall x.A : ty, f : tm , g : tm
+      |--- |- if(x.A, false, f, g) => g -- : A[x:=true]
 
 --
 

@@ -43,17 +43,27 @@ sortCheckAxioms' (ax : axs) = do
   modify $ over iSymAxiomMap (Map.insert funSym (Axiom.name ax'))
   sortCheckAxioms' axs
 
--- could be less monadic, but it's easier to throw errors this way
 -- statements are always funSym intros
+-- we're here strictly after simple checking of terms => have all the funsyms we need
 getAxFunSym :: Axiom -> SortCheckM Name
-getAxFunSym (Axiom _ _ _ (Statement _ (FunApp name tms) _)) = do
-  checkArgsAreMetaVars (map snd tms)
+getAxFunSym (Axiom nm fvs _ (Statement _ (FunApp name tms) ty)) = do
+  checkArgsAreMetaVars (map fst fvs) tms
+  (FunSym _ _ srt) <- uses (SymbolTable.funSyms) (unJust . Map.lookup name)
+  when (null ty && srt == varSort) $
+    throwError $ "Axiom that introduces a funsym of sort tm must have a type: " ++ nm
   return name
   where
-    checkArgsAreMetaVars :: [Term] -> SortCheckM ()
-    checkArgsAreMetaVars [] = return ()
-    checkArgsAreMetaVars (Meta _ : xs) = checkArgsAreMetaVars xs
-    checkArgsAreMetaVars _ = throwError $ "Not all terms in " ++ name ++ " are metavars"
+    checkArgsAreMetaVars :: [MetaVar] -> [(Ctx, Term)] -> SortCheckM ()
+    checkArgsAreMetaVars fvs [] = return ()
+    checkArgsAreMetaVars fvs ((ct, Meta (MetaVar _ mvN)): xs) = do
+      let mv = MetaVar ct mvN
+      let fv = unJust $ lookup mv (zip fvs fvs)
+      unless (identicalMV mv fv) $
+        throwError $ show mv ++ " has different context from " ++
+                     show fv ++ " in funsym intro axiom: " ++ nm
+      checkArgsAreMetaVars fvs xs
+    checkArgsAreMetaVars _ _ = throwError $ "Not all terms in " ++ name ++
+                                            " are metavars in: " ++ nm
 
 getAxFunSym (Axiom _ _ _ Statement {}) =
   throwError "Implementation bug, should have FunApp here"
@@ -71,8 +81,8 @@ checkAx ax@(Axiom name forall prem concl) = do
   when (isEqJudgement concl) $
     throwError $ "Equality is not allowed in the conclusion of typing rules: " ++ name ++ "\nUse reductions"
 
-  -- unless (isFunSym tm) $
-  --   throwError $ "Statements must define fun syms\n" ++ show st
+  unless (null $ _jContext concl) $
+    throwError $ "Conclusion must have empty context: " ++ name
 
   forall' <- checkForallVars forall
   prem' <- mapM (checkJudgem forall') prem

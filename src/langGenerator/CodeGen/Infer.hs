@@ -33,7 +33,7 @@ fAx = Axiom "as" [] [] fJud
 --------------------------------------------------------------------------
 
 fsymLeft :: FunctionalSymbol -> [Pat]
-fsymLeft f = [PVar (Ident "ctx"), PParen $ funToPat f]
+fsymLeft f = [PVar (Ident "ctx"), funToPat f]
 
 errStarStar :: String -> Exp
 errStarStar str = App (Var (UnQual (Ident "report"))) (Lit (String str))
