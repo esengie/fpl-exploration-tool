@@ -43,7 +43,7 @@ codeGenIO :: FilePath -> IO String
 codeGenIO = genIO templateFile
 
 gene :: IO ()
-gene = codeGenIO "examples/langSpecs/depTypedLC.fpl" >>= putStrLn
+gene = codeGenIO "examples/langSpecs/convoluted.fpl" >>= putStrLn
 
 --------------------------------------------------------------------------------
 
