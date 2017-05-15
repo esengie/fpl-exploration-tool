@@ -86,11 +86,11 @@ infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
 infer0 = infer emptyCtx
 
 -- from reductions
-nf :: Term a -> Term a
+nf :: (Show a, Eq a) => Term a -> Term a
 nf (Var a) = Var a
 nf TyDef   = TyDef
 
-nf':: Cnt -> Term a -> Term a
+nf':: (Show a, Eq a) => Cnt -> Term a -> Term a
 nf' = undefined
 
 rt f x = runIdentity (traverse f x)

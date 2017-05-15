@@ -50,8 +50,9 @@ buildNf' cnt red = do
   -- this time we get the stms and wrap them in 'case' exp
   inside <- uses doStmts doExp
 
-  mets <- uses metas Map.keys
-  trace (show mets) $ return $ Match nf'N
+  -- mets <- uses metas (\m -> (\(x, c) -> (x,fst <$> c)) <$> Map.toList m)
+  -- trace (show mets) $
+  return $ Match nf'N
                 leftFun
                 (UnGuardedRhs $ caseRight cnt inside)
                 Nothing
@@ -66,10 +67,25 @@ buildLeft n (Reduct _ l _ _) = do
 buildLeft _ _ = throwError "Can't have anything but Reduct in conclusion"
 
 --------------------------------------------------------------------------------
+-- we're in nf, no need to nf like in infer case
 genShortenMetas :: BldRM ()
 genShortenMetas = do
-  return ()
+  -- (meta, [(ctx, exp)])
+  mets <- uses metas (Map.toList)
+  mapM_ genShortenMeta mets
 
+genShortenMeta :: (MetaVar, [(Ctx, Exp)]) -> BldRM ()
+genShortenMeta (mv@(MetaVar ctx _), lst) = do
+  freshs <- replicateM (length lst) fresh
+  exps <- mapM (trimMeta ctx) lst
+
+  let v_to_ex = zipWith (\f (_, ex) -> (f,ex)) freshs exps
+  mapM_ (appendStmt . (uncurry generator)) v_to_ex
+
+  let new_exps = zipWith (\f (ct, _) -> (ct, var $ name f)) freshs exps
+  metas %= Map.insert mv new_exps
+
+--------------------------------------------------------------------------------
 genReturnSt :: Judgement -> BldRM ()
 genReturnSt (Reduct _ _ r _) = do
   ret <- buildTermExp [] r
