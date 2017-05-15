@@ -58,7 +58,7 @@ inst1 :: Exp -> Exp -> Exp -- generates instantiate v x code
 inst1 ex1 ex2 = appFun (var (name "instantiate")) [ex1, ex2]
 
 nf :: Int -> Exp -> Exp
-nf n ex | n < 1 = app (var (name "nf")) ex
+nf n ex | n < 1 = app (var nfN) ex
       | otherwise = app (var (name $ "nf" ++ show n)) ex
 
 

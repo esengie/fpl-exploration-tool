@@ -73,7 +73,7 @@ stmtsAndMetaLast (m, ct, x:[]) = do
   let vname = var (name vn)
   -- trim ctx of metavar given in here and put it into the metamap
   -- v_i+1 <- trim v_i
-  (mct, mvarExp) <- trimMeta (mContext m) (ct, vname)
+  (mct, mvarExp) <- trimMeta (mContext m) (ct, nf 0 vname)
   vm <- fresh
   metas %= updateMap m (mct, var (name vm))
   -- return first v <- infer ..., then m <- trimmed
