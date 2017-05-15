@@ -22,13 +22,15 @@ module AST.Term(
   lookupName',
   isFunSym,
   isVar,
+  identicalMV,
   allUnique,
   isSubset,
+  toListM,
   changeError
 ) where
 
 import qualified Data.Set as Set
-import Data.List(intercalate)
+import Data.List(intercalate, sort)
 
 type SortName = String
 type VarName = String
@@ -104,6 +106,9 @@ data MetaVar = MetaVar {
 instance Eq MetaVar where
   m == m' = (mName m) == (mName m')
 
+identicalMV :: MetaVar -> MetaVar -> Bool
+identicalMV (MetaVar ct1 vn1) (MetaVar ct2 vn2) = (sort ct1) == (sort ct2) && vn1 == vn2
+
 instance Ord MetaVar where
   m `compare` m' = (mName m) `compare` (mName m')
 
@@ -121,6 +126,12 @@ data Term = Var VarName              -- xyz
           | FunApp Name [(Ctx, Term)]
           | Subst Term VarName Term
     deriving (Eq)
+
+toListM :: Term -> [MetaVar]
+toListM (Var _) = []
+toListM (Meta mv) = [mv]
+toListM (Subst tm1 _ tm2) = toListM tm1 ++ toListM tm2
+toListM (FunApp _ lst) = concat (toListM . snd <$> lst)
 
 instance Show Term where
   show (Var nm) = nm

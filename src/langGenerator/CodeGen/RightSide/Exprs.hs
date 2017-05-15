@@ -1,7 +1,8 @@
-module CodeGen.Infer.Exprs(
+module CodeGen.RightSide.Exprs(
   conniveMeta,
   trimMeta,
   buildTermExp,
+  buildTermPat,
   buildCheckExps,
   buildInferExps
 ) where
@@ -13,11 +14,12 @@ import Language.Haskell.Exts.Simple
 import qualified Data.Map as Map
 
 import AST hiding (Var, name, Name)
-import qualified AST (Term(Var))
+import qualified AST (Term(Var), Name)
 
-import CodeGen.Infer.Common
-import CodeGen.Infer.Helpers
-import CodeGen.Infer.Solver
+import CodeGen.Common
+import CodeGen.RightSide.Common
+import CodeGen.RightSide.Helpers
+import CodeGen.RightSide.Solver
 
 -- [x,y,z] -> [x, x.y, xy.z]
 -- but it's types
@@ -158,6 +160,20 @@ buildTermExp ctx (FunApp nm lst) = do
 
 -- (*) x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
 --         ctx: z -> z+y -> v+zy -> x+vzy
+
+buildTermPat :: Ctx -> Term -> BldRM Pat
+buildTermPat ctx (AST.Var vn) = lift $ buildVarPat ctx vn -- builds up stuff like F(F(F(F(B()))))
+buildTermPat _ (Subst{}) = throwError "Subst is not allowed in the left of reductions, implem error"
+buildTermPat ctx (Meta mv) = do
+  vm <- fresh
+  metas %= updateMap mv (ctx, var $ name vm)
+  return (pvar $ name vm)
+buildTermPat ctx (FunApp nm lst) = do
+  -- here's the main reason I wrote SimpleBound
+  pats <- mapM (\(ctx', tm) -> buildTermPat (ctx ++ ctx') tm) lst
+  let pats' = (\(ctx', p) -> unScope (length ctx') p) <$>
+              zipWith (\(c,t) p -> (c,p)) lst pats
+  return $ pApp (name $ caps nm) pats'
 
 
 

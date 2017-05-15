@@ -14,19 +14,21 @@ import Data.Functor.Identity
 import Control.Monad.Error.Class (throwError)
 import Data.Traversable (fmapDefault, foldMapDefault)
 import Data.Traversable.Deriving
+import Bound
 
-import SimpleBound
-import LangTemplate (rem1, rem2, rem3, rem4,
+import LangTemplate_old (rem1, rem2, rem3, rem4,
                      ap2, ap3, ap4, ap5,
+                     fromScope2, fromScope3, fromScope4,
+                     toScope2, toScope3, toScope4,
                      add1, add2, add3, add4,
                      swap2'3, swap1'3, swap1'2,
-                     rt, Cnt(..))
+                     rt)
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
 
-consCtx :: Type a -> Ctx a -> Ctx (Var a)
-consCtx ty ctx (B ) = pure (F <$> ty)
+consCtx :: Type a -> Ctx a -> Ctx (Var () a)
+consCtx ty ctx (B ()) = pure (F <$> ty)
 consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
 data Term a
@@ -35,11 +37,11 @@ data Term a
   | True
   | False
   | Bool
-  | Lam (Type a) (Scope Term a)
-  | Pi  (Type a) (Scope Type a)
+  | Lam (Type a) (Scope () Term a)
+  | Pi  (Type a) (Scope () Type a)
   | App (Term a) (Term a)
-  | If (Scope Type a) (Term a) (Term a) (Term a)
-  | Bg (Scope (Scope Term) a) (Term a)
+  | If (Scope () Type a) (Term a) (Term a) (Term a)
+  | Bg (Scope () (Scope () Term) a) (Term a)
 
 type Type = Term
 
@@ -69,25 +71,22 @@ instance Monad Term where
   App t1 t2 >>= f = App (t1 >>= f) (t2 >>= f)
   Bg t1 t2 >>= f = Bg (t1 `ap2` f) (t2 >>= f)
 
-
+-- from reductions
 nf :: Term a -> Term a
 nf (Varg a) = Varg a
 nf TyK     = TyK
 nf True    = True
 nf False   = False
 nf Bool    = Bool
-nf (If a t x y) = nf' (U(U(Bot))) (If (toScope $ nf $ fromScope a) (nf t) (nf x) (nf y))
+nf (If a t x y) = case (nf t) of
+      True  -> (nf x)
+      False -> (nf y)
+      x -> If (toScope $ nf $ fromScope a) x (nf x) (nf y)
 nf (Lam ty t)  = Lam (nf ty) (toScope $ nf $ fromScope t)
 nf (Pi ty t)   = Pi  (nf ty) (toScope $ nf $ fromScope t)
-nf (App t1 t2) = nf' (U(Bot)) (App (nf t1) (nf t2))
-
-nf' (U(U _)) (If a True x y) = nf x
-nf' (U _)    (If a False x y) = nf x
-nf' (U _) (App (Lam ty t1) t2) = nf (instantiate t2 t1)
-nf' _ (Bg (Scope (Scope tm)) t) = Bg (toScope $ toScope $ nf tm) t
-nf' _ x = x
-
-
+nf (App t1 t2) = case (nf t1, nf t2) of
+      (Lam ty t1, t2) -> nf (instantiate1 t2 t1)
+      (f, x)  -> App f x
 
 check :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
 check ctx want t = do
@@ -105,9 +104,9 @@ infer ctx Bool    = pure TyK
 infer ctx (If a t x y) = do
     check ctx Bool t
     check (consCtx Bool ctx) TyK (fromScope a)
-    check ctx (instantiate True a) x
-    check ctx (instantiate False a) y
-    pure . nf $ instantiate t a
+    check ctx (instantiate1 True a) x
+    check ctx (instantiate1 False a) y
+    pure . nf $ instantiate1 t a
 infer ctx (Lam ty t) = do
     check ctx TyK ty
     Pi ty . toScope <$> infer (consCtx ty ctx) (fromScope t)--(fromScope t)
@@ -123,9 +122,8 @@ infer ctx (App f x) = do
     case v of
       Pi ty t -> do
         check ctx ty x
-        pure . nf $ instantiate x t
+        pure . nf $ instantiate1 x t
       _ -> Left "can't apply non-function"
-
 
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
@@ -136,14 +134,17 @@ infer0 = infer emptyCtx
 
 -- smart constructors
 lam :: Eq a => a -> Type a -> Term a -> Term a
-lam v ty t = Lam ty (abstract v t)
+lam v ty t = Lam ty (abstract1 v t)
 
 pi :: Eq a => a -> Type a -> Term a -> Term a
-pi v ty t = Pi ty (abstract v t)
+pi v ty t = Pi ty (abstract1 v t)
 
 iff :: Eq a => a -> Type a -> Term a -> Term a -> Term a -> Term a
-iff v ty t x y = If (abstract v ty) t x y
+iff v ty t x y = If (abstract1 v ty) t x y
 
+(==>) :: Type a -> Type a -> Type a -- non-dependent function type
+a ==> b = Pi a (Scope $ fmap (F . pure) b)
+infixr 5 ==>
 
 fromList :: Eq a => [(a, Type a)] -> Ctx a
 fromList [] = emptyCtx
@@ -153,19 +154,19 @@ fromList ((x,t):xs) = \y -> if (x == y)
 
 
 
-zer =  abstract "y" (Varg "y")
+zer = fromScope $ abstract1 "y" (Varg "y")
 -- r = outBind2 $ fromScope $ abstract "y" (Varg "x")
 -- l = inBind2 $ fromScope $ abstract "y" (Varg "x")
 
-r' = (fromScope $ abstract "y" (Varg "x"))
+r' = (fromScope $ abstract1 "y" (Varg "x"))
 
 -- x.T -> lam(S, z.(lam(S, y.T[x:=true][v:=false]))) -- xvzy.T
 -- z -> z+y -> v+zy -> x+vzy
 -- fun :: Scope () Term a -> Term a -> Term a
 fun t s x v = let tm = (rt swap1'2) $ (rt add1) $ (rt add1) $ (rt add1) $ fromScope t
                   s2 = rt add1 s
-                  tsub = (instantiate x (toScope tm))
-                  tork = instantiate v (toScope tsub)
+                  tsub = (instantiate1 x (toScope tm))
+                  tork = instantiate1 v (toScope tsub)
           in
    Lam s (toScope $ Lam s2 (toScope tork))
 
@@ -173,7 +174,7 @@ fun t s x v = let tm = (rt swap1'2) $ (rt add1) $ (rt add1) $ (rt add1) $ fromSc
 --   (s, Lam x y) -> Lam s ( y)
 --   _ -> s
 
-inBool x = instantiate True x
+-- inBool x = instantiate1 True x
 
 -- fals' = rta1 (rta1 (rta1 False))
 -- tru' = rta1 (rta1 True)

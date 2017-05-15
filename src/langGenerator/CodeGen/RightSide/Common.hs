@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module CodeGen.Infer.Common
+module CodeGen.RightSide.Common
   where
 
 import Control.Monad.State
@@ -21,7 +21,8 @@ import CodeGen.Common hiding (count)
 data Q = Q {
   _count :: Int,
   _foralls :: Map.Map MetaVar Sort,
-  -- metaVar as in forall x.T -> termExp
+  -- metaVar as in forall(!) x.T -> (realctx, termExp)
+  -- if we have forall x.T, but then xrt.T = term, we store x.T -> (xrt, term)
   _metas :: Map.Map MetaVar [(Ctx, Exp)],
   _doStmts :: [Stmt], -- this will be concatted
 
@@ -29,6 +30,7 @@ data Q = Q {
   _juds  :: Juds,
   -- various counters - the outer monad will have to use this
   _toGen :: ToGen,
+  -- need this to get the kinds of funsyms
   _funsyms :: Map.Map AST.Name FunctionalSymbol
 }
 
@@ -55,10 +57,10 @@ fresh = do
   count += 1
   return (vars !! i)
 
-updateMap :: MetaVar -> v -> Map.Map MetaVar [(Ctx,v)] -> Map.Map MetaVar [(Ctx,v)]
-updateMap k v m = case Map.lookup k m of
-  Nothing -> Map.insert k [(mContext k,v)] m
-  (Just vs) -> Map.insert k ((mContext k,v):vs) m
+updateMap :: MetaVar -> (ct, v) -> Map.Map MetaVar [(ct,v)] -> Map.Map MetaVar [(ct,v)]
+updateMap mv (ct, ex) mp = case Map.lookup mv mp of
+  Nothing -> Map.insert mv [(ct,ex)] mp
+  (Just vs) -> Map.insert mv ((ct,ex):vs) mp
 
 appendExp :: Exp -> BldRM ()
 appendExp ex = appendStmt (Qualifier ex)

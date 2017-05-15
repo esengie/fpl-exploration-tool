@@ -1,5 +1,7 @@
-module CodeGen.Infer.RightSide(
-  buildRight
+module CodeGen.RightSide.Infer(
+  buildRightInfer,
+  populateForalls,
+  genCheckMetaEq
 ) where
 
 import Control.Monad.State
@@ -14,18 +16,18 @@ import qualified AST (Term(Var), Name)
 import AST.Axiom hiding (name)
 
 import CodeGen.Common hiding (count)
-import CodeGen.Infer.Common
-import CodeGen.Infer.Helpers
-import CodeGen.Infer.Exprs
+import CodeGen.RightSide.Common
+import CodeGen.RightSide.Helpers
+import CodeGen.RightSide.Exprs
 
-buildRight :: (Map.Map AST.Name FunctionalSymbol) -> FunctionalSymbol -> Axiom -> ErrorM Exp
-buildRight fss fs ax = -- pure ExprHole
+buildRightInfer :: (Map.Map AST.Name FunctionalSymbol) -> FunctionalSymbol -> Axiom -> ErrorM Exp
+buildRightInfer fss fs ax = -- pure ExprHole
   runBM fss (buildRight' fs ax)
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
   -- populate foralls
-  populateForalls ax
+  populateForalls (forallVars ax)
   -- write all metas given as args
   correctFresh ax
   -- check metas for equality and leave only one in map if many
@@ -59,19 +61,21 @@ buildRight' fs ax = do
   mapM_ appendExp (concat expsDef)
 
   genReturnSt fs (conclusion ax)
-  uses doStmts doE
+  uses doStmts doExp
 
 -- >>= \t -> remvars (Metavar) this
 stmtsAndMetaLast :: (MetaVar, Ctx, [Exp]) -> BldRM [Stmt]
 stmtsAndMetaLast (_, _,  []) = throwError "stmtsAndMetaLast must be called with at least one expr"
 -- this is a metaVar def
 stmtsAndMetaLast (m, ct, x:[]) = do
+  -- v_i <- x
   vn <- fresh
   let vname = var (name vn)
   -- trim ctx of metavar given in here and put it into the metamap
-  (mct, mvarExp) <- trimMeta (mContext m) (ct, vname)
+  -- v_i+1 <- trim v_i
+  (mct, mvarExp) <- trimMeta (mContext m) (ct, nf 0 vname)
   vm <- fresh
-  metas %= updateMap (MetaVar mct (mName m)) (var (name vm))
+  metas %= updateMap m (mct, var (name vm))
   -- return first v <- infer ..., then m <- trimmed
   -- the benefit of using remove here is that it's in TC too,
   -- every other place we just use Identity monad!
@@ -99,22 +103,19 @@ stmtsAndTmEqLast (tm, ct, x:xs) = do
 correctFresh :: Axiom -> BldRM ()
 correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
   where
-    populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
+    populateSt ((ct, Meta mv):xs) = do
       v <- fresh
-      metas %= updateMap (MetaVar ct nm) (fromScope (length ct) $ var (name v))
+      metas %= updateMap mv (ct, fromScope (length ct) $ var (name v))
       populateSt xs
     populateSt [] = return ()
     populateSt _ = throwError "Can't have a non metavariable in an axiom concl"
 correctFresh _ = throwError $ "error: Only axioms with funsym intro are allowed"
 
-populateForalls :: Axiom -> BldRM ()
-populateForalls (Axiom _ lst _ _) = populateSt lst
-  where
-    populateSt :: [(MetaVar, Sort)] -> BldRM ()
-    populateSt [] = return ()
-    populateSt ((m, sort):xs) = do
-      foralls %= Map.insert m sort
-      populateSt xs
+populateForalls :: [(MetaVar, Sort)] -> BldRM ()
+populateForalls [] = return ()
+populateForalls ((m, sort):xs) = do
+  foralls %= Map.insert m sort
+  populateForalls xs
 
 --------------------------------------------------------------------------------
 -- Check terms for equality
@@ -130,11 +131,9 @@ genMetaEq [] = return []
 genMetaEq (x : []) = return [x]
 genMetaEq (tm : y'@(ct2, y) : xs) = do
   ex <- conniveMeta ct2 tm
-  let ex' = eqCheckExp (toScope (length ct2) ex) y
+  let ex' = eqCheckExp ex y
   appendExp ex'
-
   genMetaEq (y' : xs)
-
 
 --------------------------------------------------------------------------------
 genReturnSt :: FunctionalSymbol -> Judgement -> BldRM ()
@@ -143,7 +142,7 @@ genReturnSt (FunSym _ _ res) (Statement _ _ Nothing) = do
 genReturnSt _ (Statement _ _ (Just ty)) = do
   ret <- buildTermExp [] ty
   appendExp $ retExp ret
-genReturnSt _ _ = throwError "Can't have anything but funsym in conclusion"
+genReturnSt _ _ = throwError "Can't have anything but Statement in conclusion"
 
 
 

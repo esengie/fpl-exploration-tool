@@ -57,10 +57,7 @@ genMonad = do
   let matches = (\f -> infixMatch f (boundBind f)) <$> Map.elems (st^.SortCheck.SymbolTable.funSyms) ++ sorts
   let monadInst = monadTerm (bindVarA : matches)
 
-  lst <- get
-  (_, n)<- getDecl "instance Monad Term"
-  put lst{decls = replace n [monadInst] (decls lst)}
-
+  replaceDecls "instance Monad Term" [monadInst]
 
 
 

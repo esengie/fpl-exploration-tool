@@ -11,7 +11,6 @@ import Control.Applicative (liftA3)
 import Control.Monad.Except (throwError, lift)
 import Language.Haskell.Exts.Simple
 import Control.Lens
-import Debug.Trace
 
 import SortCheck
 import AST hiding (Var)
@@ -20,6 +19,7 @@ import CodeGen.Common as X
 import CodeGen.ADT
 import CodeGen.MonadInstance
 import CodeGen.Infer as X
+import CodeGen.Nf as X
 
 --------------------------------------------------------------------------------
 -- Main place
@@ -43,7 +43,7 @@ codeGenIO :: FilePath -> IO String
 codeGenIO = genIO templateFile
 
 gene :: IO ()
-gene = codeGenIO "examples/langSpecs/depTypedLC.fpl" >>= putStrLn
+gene = codeGenIO "examples/langSpecs/convoluted.fpl" >>= putStrLn
 
 --------------------------------------------------------------------------------
 
@@ -53,6 +53,7 @@ buildModule (Module a b c _) = do
   genSortTypes
   genMonad
   genInfer
+  genNf
   decl <- lift $ gets decls
   return (Module a b c decl)
 buildModule x = return x

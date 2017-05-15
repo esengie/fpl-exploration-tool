@@ -25,8 +25,8 @@ ctorDecl nm = ConDecl (Ident nm)
 tyCon nm = TyCon $ UnQual (Ident nm)
 -- unit
 unitT = TyCon $ Special UnitCon
--- Scope ()
-scope1 = TyApp (tyCon "Scope") unitT
+-- Scope
+scope1 = (tyCon "Scope")
 -- data Term a = ...
 termA = DataDecl DataType Nothing (DHApp (DHead (Ident "Term")) (UnkindedVar (Ident "a")))
 -- Var a
@@ -54,9 +54,7 @@ genTerms = do
   let qConDecls = (ctorVarA : sorts) ++ funSymbs
   let termT = termA qConDecls Nothing
   -- Generate data Term a = ...
-  lst <- get
-  (_ , n) <- getDecl "data Term"
-  put lst{decls = (replace n [termT] (decls lst))}
+  replaceDecls "data Term" [termT]
 --------------------------------------------------------------------------------
 
 -- "Type" -> type Type = Term
@@ -67,12 +65,8 @@ genSortTypes :: GenM ()
 genSortTypes = do
   st <- ask
   -- Generate type Type = Term, etc.
-  lst <- lift get
-  (_, n)<- getDecl "type Type"
   let sortTypes = map typeDecl (sortsWO_tm st)
-  lift $ put lst{decls = (replace n sortTypes (decls lst))}
-
-
+  replaceDecls "type Type" sortTypes
 
 
 
