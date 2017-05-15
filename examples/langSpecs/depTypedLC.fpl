@@ -48,7 +48,7 @@ Reductions :
   Beta = -- not impl
     forall x.b : tm, A : ty, a : tm, x.T : ty
       -- |--- |- app(b[x:=a], a) => b[x := a] : T[x:=a]
-       |--- |- app(lam(A , x.b) , a) => b[x := a] : T[x:=a]
+       |--- |- app(lam(A , x.app(a, b)) , a) => b[x := a] : T[x:=a]
 
   IfRed =
     forall x.A : ty, f : tm , g : tm

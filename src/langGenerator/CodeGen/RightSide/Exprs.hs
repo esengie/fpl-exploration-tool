@@ -166,7 +166,7 @@ buildTermPat ctx (AST.Var vn) = lift $ buildVarPat ctx vn -- builds up stuff lik
 buildTermPat _ (Subst{}) = throwError "Subst is not allowed in the left of reductions, implem error"
 buildTermPat ctx (Meta mv) = do
   vm <- fresh
-  metas %= updateMap (MetaVar ctx (mName mv)) (var $ name vm)
+  metas %= updateMap mv (ctx, var $ name vm)
   return (pvar $ name vm)
 buildTermPat ctx (FunApp nm lst) = do
   -- here's the main reason I wrote SimpleBound

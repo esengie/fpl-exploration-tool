@@ -6,6 +6,7 @@ import Control.Monad.State
 import Control.Monad.Except (throwError, lift)
 import Control.Lens
 import Language.Haskell.Exts.Simple
+import Debug.Trace
 
 import qualified Data.Map as Map
 
@@ -49,7 +50,8 @@ buildNf' cnt red = do
   -- this time we get the stms and wrap them in 'case' exp
   inside <- uses doStmts doExp
 
-  return $ Match nf'N
+  mets <- uses metas Map.keys
+  trace (show mets) $ return $ Match nf'N
                 leftFun
                 (UnGuardedRhs $ caseRight cnt inside)
                 Nothing
@@ -65,7 +67,8 @@ buildLeft _ _ = throwError "Can't have anything but Reduct in conclusion"
 
 --------------------------------------------------------------------------------
 genShortenMetas :: BldRM ()
-genShortenMetas = return ()
+genShortenMetas = do
+  return ()
 
 genReturnSt :: Judgement -> BldRM ()
 genReturnSt (Reduct _ _ r _) = do
@@ -85,7 +88,7 @@ caseRight :: Int -> Exp -> Exp
 caseRight cnt ex = caseE ex [alt (pApp (name "Left") [PWildCard])
                                  (nonMatch cnt),
                              alt (pApp (name "Right") [pvar $ name "x"])
-                                 (var $ name "x")]
+                                 (app (var nfN) $ var (name "x"))]
 
 -- feed it (U(U(U(U(U(Bot)))))) to rec call in case of failure
 -- we must call one less than us, so if we are number 1 out of 3

@@ -68,12 +68,14 @@ stmtsAndMetaLast :: (MetaVar, Ctx, [Exp]) -> BldRM [Stmt]
 stmtsAndMetaLast (_, _,  []) = throwError "stmtsAndMetaLast must be called with at least one expr"
 -- this is a metaVar def
 stmtsAndMetaLast (m, ct, x:[]) = do
+  -- v_i <- x
   vn <- fresh
   let vname = var (name vn)
   -- trim ctx of metavar given in here and put it into the metamap
+  -- v_i+1 <- trim v_i
   (mct, mvarExp) <- trimMeta (mContext m) (ct, vname)
   vm <- fresh
-  metas %= updateMap (MetaVar mct (mName m)) (var (name vm))
+  metas %= updateMap m (mct, var (name vm))
   -- return first v <- infer ..., then m <- trimmed
   -- the benefit of using remove here is that it's in TC too,
   -- every other place we just use Identity monad!
@@ -101,9 +103,9 @@ stmtsAndTmEqLast (tm, ct, x:xs) = do
 correctFresh :: Axiom -> BldRM ()
 correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
   where
-    populateSt ((ct, Meta (MetaVar _ nm)):xs) = do
+    populateSt ((ct, Meta mv):xs) = do
       v <- fresh
-      metas %= updateMap (MetaVar ct nm) (fromScope (length ct) $ var (name v))
+      metas %= updateMap mv (ct, fromScope (length ct) $ var (name v))
       populateSt xs
     populateSt [] = return ()
     populateSt _ = throwError "Can't have a non metavariable in an axiom concl"

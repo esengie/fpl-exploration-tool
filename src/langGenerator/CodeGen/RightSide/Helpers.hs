@@ -101,6 +101,7 @@ travE = var (name "traverse")
 sortToExp nm = tyCtor $ sortToTyCtor nm
 tmAlias = name ("tmAlias")
 nf'N = name "nf'"
+nfN = name "nf"
 unScopeP p = pApp (name "Scope") [p]
 
 doExp ((Qualifier x):[]) = x
