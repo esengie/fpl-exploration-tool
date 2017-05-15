@@ -4,10 +4,7 @@ module Parser(
 ) where
 
 import AST
-import AST.Axiom as Ax
-import AST.Reduction as Red
 import Lexer
-
 }
 
 %name parse
@@ -20,34 +17,15 @@ import Lexer
 %token
       int             { Token _ (TInt $$)   }
       ident           { Token _ (TIdent $$) }
-      depSortBeg      { Token _ TDepS       }
-      simpleSortBeg   { Token _ TSimpleS    }
-      funSymBeg       { Token _ TFunSyms    }
-      axBeg           { Token _ TAxioms     }
-      redBeg          { Token _ TReds       }
-      V               { Token _ TForall     }
-      def             { Token _ TDef        }
-      '='             { Token _ TEq         }
-      ':'             { Token _ TColon      }
-      '|-'            { Token _ TTurnstile  }
-      '=>'            { Token _ TReduce     }
-      '|---'          { Token _ TJudgement  }
       ','             { Token _ TComma      }
       '.'             { Token _ TDot        }
-      '->'            { Token _ TArrow      }
-      '*'             { Token _ TTimes      }
       '('             { Token _ TLParen     }
       ')'             { Token _ TRParen     }
-      '['             { Token _ TLSubst     }
-      ']'             { Token _ TRSubst     }
-      ':='            { Token _ TSubst      }
-      '\t'            { Token _ TIndent     }
-      '/t'            { Token _ TDedent     }
-  --  '\n'            { Token _ TNewLine    } -- currently not used in the parsing stage
+      ';'             { Token _ TSemi       }
 
 %%
 
-LangSpec        :   Sorts FunSyms AxRed  { LangSpec (fst $1) (snd $1) $2 (fst $3) (snd $3) }
+Lang            :   Sorts FunSyms AxRed  { LangSpec (fst $1) (snd $1) $2 (fst $3) (snd $3) }
 
 Sorts           :   DepSorts SimpleSorts                      { ($1, $2) }
                 |   SimpleSorts DepSorts                      { ($2, $1) }

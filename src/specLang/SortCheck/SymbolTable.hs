@@ -10,10 +10,14 @@ module SortCheck.SymbolTable(
   funSyms,
   axioms,
   reductions,
-  iSymAxiomMap
+  iSymAxiomMap,
+  funToAx,
+  reducts,
+  unJust
 ) where
 
 import Control.Monad.Trans.State.Lazy
+import Control.Monad (filterM)
 import Control.Monad.Trans.Class (lift)
 import Control.Lens
 
@@ -31,7 +35,7 @@ data SymbolTable = SymbolTable {
 , _axioms        :: Map AST.Name Axiom
 , _reductions    :: Map AST.Name Reduction
 , _iSymAxiomMap  :: Map AST.Name AST.Name -- intro axioms of funSyms
-} deriving (Eq)
+}
 
 makeLenses ''SymbolTable
 
@@ -45,6 +49,17 @@ funToAx :: SymbolTable -> AST.FunctionalSymbol -> Maybe Axiom
 funToAx table fun = do
   key <- Map.lookup (AST.name fun) (table^.iSymAxiomMap)
   Map.lookup key (table^.axioms)
+
+reducts :: SymbolTable -> AST.FunctionalSymbol -> Either String [Reduction]
+reducts table (AST.FunSym nm _ _) = filterM (eqTo nm) $ Map.elems (table^.reductions)
+  where
+    eqTo nm red = eqTo' nm (Reduction.conclusion red)
+    eqTo' nm (AST.Reduct _ (AST.FunApp n _) _ _) = Right $ nm == n
+    eqTo' nm x = Left $ "Error in checking, reduct must start with funsym and must be reducts\n" ++ show x
+
+
+unJust :: Maybe a -> a
+unJust (Just a) = a
 
 unJustStr :: String -> (a -> String) -> Maybe a -> String
 unJustStr msg _ Nothing = msg

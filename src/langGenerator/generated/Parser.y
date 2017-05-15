@@ -20,30 +20,10 @@ import Lexer
 %token
       int             { Token _ (TInt $$)   }
       ident           { Token _ (TIdent $$) }
-      depSortBeg      { Token _ TDepS       }
-      simpleSortBeg   { Token _ TSimpleS    }
-      funSymBeg       { Token _ TFunSyms    }
-      axBeg           { Token _ TAxioms     }
-      redBeg          { Token _ TReds       }
-      V               { Token _ TForall     }
-      def             { Token _ TDef        }
-      '='             { Token _ TEq         }
-      ':'             { Token _ TColon      }
-      '|-'            { Token _ TTurnstile  }
-      '=>'            { Token _ TReduce     }
-      '|---'          { Token _ TJudgement  }
       ','             { Token _ TComma      }
       '.'             { Token _ TDot        }
-      '->'            { Token _ TArrow      }
-      '*'             { Token _ TTimes      }
       '('             { Token _ TLParen     }
       ')'             { Token _ TRParen     }
-      '['             { Token _ TLSubst     }
-      ']'             { Token _ TRSubst     }
-      ':='            { Token _ TSubst      }
-      '\t'            { Token _ TIndent     }
-      '/t'            { Token _ TDedent     }
-  --  '\n'            { Token _ TNewLine    } -- currently not used in the parsing stage
 
 %%
 

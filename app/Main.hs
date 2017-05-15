@@ -1,6 +1,16 @@
 module Main where
 
-import SortCheck
+import System.Environment
+
+import CodeGen
 
 main :: IO ()
-main = putStr "m"
+main = do
+  args <- getArgs
+  case args of
+    [] -> gene
+    x:xs -> codeGenIO x >>= putStrLn
+
+
+
+----

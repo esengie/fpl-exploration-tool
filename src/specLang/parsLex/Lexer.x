@@ -39,7 +39,7 @@ tokens :-
   "Reductions"                          { lex' TReds        }
   "forall"                              { lex' TForall      }
   "def"                                 { lex' TDef         }
-  $alpha [$alpha $digit \_ \']*         { lex  TIdent       }
+  $alpha [$alpha $digit \_ \'\-]*       { lex  TIdent     }
   "="                                   { lex' TEq          }
   "=>"                                  { lex' TReduce      }
   ":"                                   { lex' TColon       }

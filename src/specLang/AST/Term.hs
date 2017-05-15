@@ -5,6 +5,7 @@ module AST.Term(
   ContextDepth(..),
   DefaultErr(..),
   Sort(..),
+  Ctx(..),
   FunctionalSymbol(..),
   MetaVar(..),
   Term(..),
@@ -12,6 +13,7 @@ module AST.Term(
   tyName,
   tmName,
   getSortName,
+  getSortDepth,
   addToCtx,
   lowerCtx,
   zero,
@@ -20,12 +22,15 @@ module AST.Term(
   lookupName',
   isFunSym,
   isVar,
+  identicalMV,
   allUnique,
-  isSubset
+  isSubset,
+  toListM,
+  changeError
 ) where
 
 import qualified Data.Set as Set
-import Data.List(intercalate)
+import Data.List(intercalate, sort)
 
 type SortName = String
 type VarName = String
@@ -33,8 +38,14 @@ type Name = String
 type ContextDepth = Int
 type DefaultErr = Either String
 
+changeError :: String -> DefaultErr a -> DefaultErr a
+changeError msg (Left x) = Left (msg ++ "\n\t" ++ x)
+changeError _ x = x
+
 data Sort = DepSort SortName !ContextDepth | SimpleSort SortName
   deriving (Eq)
+
+type Ctx = [VarName]
 
 bracket :: String -> String
 bracket s = "(" ++ s ++ ")"
@@ -55,6 +66,10 @@ tmName = "tm"
 getSortName :: Sort -> SortName
 getSortName (DepSort nm _) = nm
 getSortName (SimpleSort nm) = nm
+
+getSortDepth :: Sort -> ContextDepth
+getSortDepth (SimpleSort _) = 0
+getSortDepth (DepSort _ x) = x
 
 zero :: Sort -> Sort
 zero (DepSort nm _) = DepSort nm 0
@@ -79,13 +94,24 @@ data FunctionalSymbol = FunSym {
 } deriving (Eq)
 
 instance Show FunctionalSymbol where
+  show (FunSym nm [] res) = nm ++ ": " ++ show res
   show (FunSym nm args res) =
     nm ++ ": " ++ intercalate "*" (map show args) ++ "->" ++ show res
 
 data MetaVar = MetaVar {
   mContext  :: [VarName]
 , mName     :: VarName
-} deriving (Eq)
+}
+
+instance Eq MetaVar where
+  m == m' = (mName m) == (mName m')
+
+identicalMV :: MetaVar -> MetaVar -> Bool
+identicalMV (MetaVar ct1 vn1) (MetaVar ct2 vn2) = (sort ct1) == (sort ct2) && vn1 == vn2
+
+instance Ord MetaVar where
+  m `compare` m' = (mName m) `compare` (mName m')
+
 
 showCtxVar :: [Name] -> String -> String
 showCtxVar [] y = y
@@ -96,15 +122,22 @@ instance Show MetaVar where
   show (MetaVar x y) = showCtxVar x y
 
 data Term = Var VarName              -- xyz
-          | TermInCtx [VarName] Term -- (x y).asd
-          | FunApp Name [Term]
+          | Meta MetaVar
+          | FunApp Name [(Ctx, Term)]
           | Subst Term VarName Term
     deriving (Eq)
 
+toListM :: Term -> [MetaVar]
+toListM (Var _) = []
+toListM (Meta mv) = [mv]
+toListM (Subst tm1 _ tm2) = toListM tm1 ++ toListM tm2
+toListM (FunApp _ lst) = concat (toListM . snd <$> lst)
+
 instance Show Term where
   show (Var nm) = nm
-  show (TermInCtx x y) = showCtxVar x (show y)
-  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map show args))
+  show (Meta vr) = mName vr ++ "-m"
+  show (FunApp nm []) = nm ++ "-f"
+  show (FunApp nm args) = nm ++ bracket (intercalate ", " (map (\(x, y) -> showCtxVar x (show y)) args))
   show (Subst into vn what) = show into ++ "[" ++ vn ++ ":= " ++ show what ++ "]"
 
 isFunSym :: Term -> Bool
@@ -113,7 +146,6 @@ isFunSym _ = False
 
 isVar :: Term -> Bool
 isVar Var{} = True
-isVar (TermInCtx _ Var{}) = True
 isVar _ = False
 
 lookupName :: (a -> Name) -> Name -> [a] -> DefaultErr a

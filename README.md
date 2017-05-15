@@ -1,4 +1,4 @@
-# This pretty much a work-in-progress.
+# This is pretty much a work-in-progress.
 
 The project is aimed at defining dependently typed languages via specifying their inference and reduction rules.
 
@@ -6,22 +6,36 @@ The program then generates our target language's parser and typechecker, so we c
 
 Think of it as a high level yacc+lex.
 
-
 # To launch:
 
 - stack install alex happy
 - stack exec alex src/specLang/parsLex/Lexer.x
 - stack exec happy alex src/specLang/parsLex/Parser.y
-- stack repl
+- stack install
 
-And "mainCheck" checks your ".fpl" file (there's also a "mainParse" - in Parser module)
+~/.local/bin/fpl-exploration-tool-exe "examples/langSpecs/depTypedLC.fpl" > my_src.hs
 
-E.g.: mainCheck "examples/langSpecs/depTypedLC.fpl"
+There are 2 modules: SortCheck and CodeGen, and two functions codeGenIO and sortCheckIO you can use those if you prefer.
 
-# Notes:
+# Notes about spec language:
 - May have depsorts and simplesorts or only depsorts
 - May have reductions or/and axioms
+- axiom names are alphaNum starting with a numeric, may contain "_", "-", "'"
+- subst binds closer than binders (x y.T[z:=ttt] == x y.(T[z:=ttt]))
 
+# Restrictions imposed:
+- conclusion of an axiom/reduction may not have a ctx (axioms always look like this .... |--- |- funSym())
+
+- only funsyms are allowed in axiom conclusions (no equations)
+- only metavars are allowed in funsyms in conclusions
+- if an axiom conclusion is a term it must have a type (can't just say |--- |- false def, must say |--- |- false : bool)
+- no substitutions are allowed for the left hand of a judgement
+- may subst only into metavars
+
+- if variables of metavariables (X) have type of metavars, they may use only metavars that come before X in funsym in conclusion (Eg: |--- |- f(A, x.B, z.Y, r.T) -- here z may use only A and B as its' type, x may use only A, while r may use A, B, and Y)
+
+- only parts of reductions used are these a => b (context, types or premises are not taken into account yet)
+- in reductions a => b all(!) metavars of b must be present in a
 
 
 ---

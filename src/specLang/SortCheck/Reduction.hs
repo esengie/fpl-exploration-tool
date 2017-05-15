@@ -26,6 +26,7 @@ sortCheckReductions (red : reds) = do
   red' <- checkRed red
   modify $ over SymbolTable.reductions (Map.insert (Reduction.name red') red')
 
+  checkConclRed (conclusion red')
   sortCheckReductions reds
 
 checkRed :: Reduction -> SortCheckM Reduction
@@ -39,12 +40,21 @@ checkRed red@(Reduction name forall prem concl) = do
     throwError $ "Must be a reduction: " ++ name
 
   forall' <- checkForallVars forall
-  mapM_ (checkJudgem forall') prem
-  checkJudgem forall' concl
+  prem' <- mapM (checkJudgem forall') prem
+  concl' <- checkJudgem forall' concl
 
-  return (Reduction name forall' prem concl)
+  return (Reduction name forall' prem' concl')
 
+checkConclRed :: Judgement -> SortCheckM ()
+checkConclRed r@(Reduct _ lft rt _) = do
+  noSubstLeft ("Subst on the left of reduction " ++ show r) lft
+  unless (isSubset (toListM rt) (toListM lft)) $
+    throwError $ "Not all metavars on right of " ++ show r ++ " are on the left"
 
+noSubstLeft :: String -> Term -> SortCheckM ()
+noSubstLeft msg (Subst{}) = throwError msg
+noSubstLeft msg (FunApp _ lst) = mapM_ (noSubstLeft msg . snd) lst
+noSubstLeft _ _ = return ()
 
 
 ---

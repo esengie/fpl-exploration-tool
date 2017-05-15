@@ -17,7 +17,7 @@ data LangSpec = LangSpec {
 , funSyms         :: [FunctionalSymbol]
 , axioms          :: [Axiom]
 , reductions      :: [Reduction]
-} deriving (Eq)
+}
 
 instance Show LangSpec where
   show (LangSpec dep simp fun ax red) = concat [
@@ -32,9 +32,6 @@ instance Show LangSpec where
     where
       helper :: (Show a) => String -> a -> String
       helper pref x = pref ++ show x
-
-
-
 
 
 
