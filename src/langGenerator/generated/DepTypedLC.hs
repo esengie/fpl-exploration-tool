@@ -20,7 +20,9 @@ import LangTemplate (rem1, rem2, rem3, rem4,
                      ap2, ap3, ap4, ap5,
                      add1, add2, add3, add4,
                      swap2'3, swap1'3, swap1'2,
-                     rt, Cnt(..))
+                     rt, Cnt(..),
+                     fromScope2,
+                     toScope2)
 
 type TC    = Either String
 type Ctx a = a -> TC (Type a)
@@ -115,9 +117,10 @@ infer ctx (Pi ty t) = do
     check ctx TyK ty
     check (consCtx ty ctx) TyK (fromScope t)
     pure TyK
--- infer ctx (Bg tt t) = do
---     (\tt -> Bg tt t) . toScope2
---       <$> infer (consCtx (outBind1 t) $ (consCtx t ctx)) (fromScope2 tt)
+infer ctx a@(Bg tt t) = do
+    cstable ctx a [piBody]
+    (\tt -> Bg tt t) . toScope2
+      <$> infer (consCtx (rt add1 t) $ (consCtx t ctx)) (fromScope2 tt)
 infer ctx (App f x) = do
     v <- infer ctx f
     case v of
@@ -126,6 +129,14 @@ infer ctx (App f x) = do
         pure . nf $ instantiate x t
       _ -> Left "can't apply non-function"
 
+
+piBody = Lam Bool (Scope $ Varg B)
+
+cstable :: (Show a, Eq a) => Ctx a -> Term a -> [Type a] -> TC (Type ())
+cstable ctx tm lst = traverse fun tm
+  where
+    fun x | any (\y -> ctx x == pure y) lst = pure ()
+          | otherwise = Left $ "Term is not cstable " ++ show tm
 
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
