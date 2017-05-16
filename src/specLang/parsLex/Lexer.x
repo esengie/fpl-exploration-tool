@@ -32,6 +32,7 @@ tokens :-
   "--".*                                ; -- kill comments
   \n (@indent)*                         { startWhite        }
   $digit+                               { lex (TInt . read) }
+  "Unstable"                            { lex' TUnstab      }
   "DependentSorts"                      { lex' TDepS        }
   "SimpleSorts"                         { lex' TSimpleS     }
   "FunctionalSymbols"                   { lex' TFunSyms     }
@@ -39,7 +40,7 @@ tokens :-
   "Reductions"                          { lex' TReds        }
   "forall"                              { lex' TForall      }
   "def"                                 { lex' TDef         }
-  $alpha [$alpha $digit \_ \'\-]*       { lex  TIdent     }
+  $alpha [$alpha $digit \_ \'\-]*       { lex  TIdent       }
   "="                                   { lex' TEq          }
   "=>"                                  { lex' TReduce      }
   ":"                                   { lex' TColon       }
@@ -73,6 +74,7 @@ data Token = Token AlexPosn TokenClass
 
 data TokenClass
   = TInt Int
+  | TUnstab
   | TDepS
   | TSimpleS
   | TFunSyms
@@ -199,6 +201,7 @@ mainLex input = printHelper (tokenize input)
 -- For nice parser error messages.
 unLex :: TokenClass -> String
 unLex (TInt i) = show i
+unLex TUnstab = "!Unstable"
 unLex TDepS = "!DepS"
 unLex TSimpleS = "!SimpleS"
 unLex TFunSyms = "!FunsSyms"

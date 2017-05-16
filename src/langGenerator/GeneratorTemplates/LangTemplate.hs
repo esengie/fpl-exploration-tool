@@ -1,8 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- May change name and add exports etc.
-module LangTemplate
-  where
+module LangTemplate(
+  TC,
+  Ctx,
+  consCtx,
+  Term(..),
+  infer,
+  infer0,
+  nf
+) where
 
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)

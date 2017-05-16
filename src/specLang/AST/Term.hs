@@ -26,7 +26,9 @@ module AST.Term(
   allUnique,
   isSubset,
   toListM,
-  changeError
+  changeError,
+  Stab,
+  deStab
 ) where
 
 import qualified Data.Set as Set
@@ -37,6 +39,8 @@ type VarName = String
 type Name = String
 type ContextDepth = Int
 type DefaultErr = Either String
+
+type Stab = Maybe [Term]
 
 changeError :: String -> DefaultErr a -> DefaultErr a
 changeError msg (Left x) = Left (msg ++ "\n\t" ++ x)
@@ -163,7 +167,9 @@ allUnique a = length a == Set.size (Set.fromList a)
 isSubset :: Ord a => [a] -> [a] -> Bool
 isSubset a b = 0 == Set.size (Set.difference (Set.fromList a) (Set.fromList b))
 
-
+deStab :: Stab -> Stab
+deStab Nothing = Just []
+deStab x = x
 
 
 

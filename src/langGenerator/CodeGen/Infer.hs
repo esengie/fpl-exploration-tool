@@ -22,6 +22,7 @@ import AST.Axiom hiding (name)
 import CodeGen.Common
 import CodeGen.MonadInstance (funToPat)
 import CodeGen.RightSide.Infer (buildRightInfer)
+import CodeGen.RightSide.Helpers (tmAlias)
 
 --------------------------------------------------------------------------
 bri = buildRightInfer
@@ -34,6 +35,9 @@ fAx = Axiom "as" Nothing [] [] fJud
 
 fsymLeft :: FunctionalSymbol -> [Pat]
 fsymLeft f = [PVar (Ident "ctx"), funToPat f]
+
+fsymLeftAlias :: FunctionalSymbol -> [Pat]
+fsymLeftAlias f = [PVar (Ident "ctx"), PAsPat tmAlias $ funToPat f]
 
 errStarStar :: String -> Exp
 errStarStar str = App (Var (UnQual (Ident "report"))) (Lit (String str))
@@ -52,7 +56,7 @@ genInfer = do
   ------
 
   let fsyms = Map.elems (st^.SortCheck.funSyms)
-  let fLeft = fsymLeft <$> fsyms
+  let fLeft = fsymLeftAlias <$> fsyms
   -- We've checked our lang, can unJust
   let fRight' = (\f -> buildRightInfer (st^.SortCheck.funSyms)
                                         f

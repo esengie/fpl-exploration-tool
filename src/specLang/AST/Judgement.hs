@@ -2,14 +2,12 @@
 
 module AST.Judgement(
   Judgement(..),
-  Stab,
   isEqJudgement,
   isRedJudgement,
   showCtx,
   jContext,
   judCtx
-  )
-  where
+) where
 
 import Data.List(intercalate)
 import Control.Lens
@@ -36,8 +34,6 @@ data Judgement =
 }
 
 makeLenses ''Judgement
-
-type Stab = Maybe [Term]
 
 judCtx :: Judgement -> Ctx
 judCtx jud = jud^.jContext.to (map fst)
