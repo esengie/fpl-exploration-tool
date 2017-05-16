@@ -46,7 +46,7 @@ sortCheckAxioms' (ax : axs) = do
 -- statements are always funSym intros
 -- we're here strictly after simple checking of terms => have all the funsyms we need
 getAxFunSym :: Axiom -> SortCheckM Name
-getAxFunSym (Axiom nm fvs _ (Statement _ (FunApp name tms) ty)) = do
+getAxFunSym (Axiom nm _ fvs _ (Statement _ (FunApp name tms) ty)) = do
   checkArgsAreMetaVars (map fst fvs) tms
   (FunSym _ _ srt) <- uses (SymbolTable.funSyms) (unJust . Map.lookup name)
   when (null ty && srt == varSort) $
@@ -65,14 +65,14 @@ getAxFunSym (Axiom nm fvs _ (Statement _ (FunApp name tms) ty)) = do
     checkArgsAreMetaVars _ _ = throwError $ "Not all terms in " ++ name ++
                                             " are metavars in: " ++ nm
 
-getAxFunSym (Axiom _ _ _ Statement {}) =
+getAxFunSym (Axiom _ _ _ _ Statement {}) =
   throwError "Implementation bug, should have FunApp here"
 getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement in conclusion"
 
 -- need to check forall var types and change them if need be
 -- check redefinition, fix forallvars, check types inside each judgement
 checkAx :: Axiom -> SortCheckM Axiom
-checkAx ax@(Axiom name forall prem concl) = do
+checkAx ax@(Axiom name stab forall prem concl) = do
   st <- get
 
   when (Map.member name $ st^.SymbolTable.axioms) $
@@ -88,7 +88,7 @@ checkAx ax@(Axiom name forall prem concl) = do
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl
 
-  return (Axiom name forall' prem' concl')
+  return (Axiom name stab forall' prem' concl')
 
 
 

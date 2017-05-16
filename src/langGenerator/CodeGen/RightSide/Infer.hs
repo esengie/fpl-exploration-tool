@@ -101,7 +101,7 @@ stmtsAndTmEqLast (tm, ct, x:xs) = do
 -- first vars are already used
 -- also axioms are always of the form like this
 correctFresh :: Axiom -> BldRM ()
-correctFresh (Axiom _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
+correctFresh (Axiom _ _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
   where
     populateSt ((ct, Meta mv):xs) = do
       v <- fresh

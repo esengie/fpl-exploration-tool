@@ -85,14 +85,14 @@ Reductions      :   Reduction                                 { [$1] }
                 |   Reduction Reductions                      { $1 : $2 }
 
 Axiom           :   ident '=' '\t' Forall '\t'
-                      Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
+                      Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 Nothing $4 $6 $8 }
                 |   ident '=' '\t' Forall '\t'
-                      '|---' JudgementNoEq '/t' '/t'          { Axiom $1 $4 [] $7 }
+                      '|---' JudgementNoEq '/t' '/t'          { Axiom $1 Nothing $4 [] $7 }
 
 Reduction       :   ident '=' '\t' Forall '\t'
-                      Premise '|---' JudgeReduct '/t' '/t'    { Reduction $1 $4 $6 $8 }
+                      Premise '|---' JudgeReduct '/t' '/t'    { Reduction $1 Nothing $4 $6 $8 }
                 |   ident '=' '\t' Forall '\t'
-                      '|---' JudgeReduct '/t' '/t'            { Reduction $1 $4 [] $7 }
+                      '|---' JudgeReduct '/t' '/t'            { Reduction $1 Nothing $4 [] $7 }
 
 Forall          :   V ForallVars                              { $2 }
                 |   V                                         { [] } -- will fix later if at all

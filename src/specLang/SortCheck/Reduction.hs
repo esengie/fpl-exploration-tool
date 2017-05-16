@@ -30,7 +30,7 @@ sortCheckReductions (red : reds) = do
   sortCheckReductions reds
 
 checkRed :: Reduction -> SortCheckM Reduction
-checkRed red@(Reduction name forall prem concl) = do
+checkRed red@(Reduction name stab forall prem concl) = do
   st <- get
 
   when (isJust $ Map.lookup name (st^.SymbolTable.reductions)) $
@@ -43,7 +43,7 @@ checkRed red@(Reduction name forall prem concl) = do
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl
 
-  return (Reduction name forall' prem' concl')
+  return (Reduction name stab forall' prem' concl')
 
 checkConclRed :: Judgement -> SortCheckM ()
 checkConclRed r@(Reduct _ lft rt _) = do

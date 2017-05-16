@@ -29,7 +29,7 @@ fMap = Map.insert "f" fFunS Map.empty
 fFunS = (FunSym "f" [DepSort "asd" 12, DepSort "a" 22] (DepSort "as" 1))
 fTm = Subst (AST.Var "asd") "asd" (AST.Var "er")
 fJud = Statement [] fTm Nothing
-fAx = Axiom "as" [] [] fJud
+fAx = Axiom "as" Nothing [] [] fJud
 --------------------------------------------------------------------------
 
 fsymLeft :: FunctionalSymbol -> [Pat]
