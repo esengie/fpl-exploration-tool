@@ -9,6 +9,8 @@ module AST.Term(
   FunctionalSymbol(..),
   MetaVar(..),
   Term(..),
+  isMeta,
+  unMeta,
   varSort,
   tyName,
   tmName,
@@ -136,6 +138,13 @@ toListM (Var _) = []
 toListM (Meta mv) = [mv]
 toListM (Subst tm1 _ tm2) = toListM tm1 ++ toListM tm2
 toListM (FunApp _ lst) = concat (toListM . snd <$> lst)
+
+isMeta :: Term -> Bool
+isMeta (Meta _) = True
+isMeta _ = False
+
+unMeta :: Term -> MetaVar
+unMeta (Meta mv) = mv
 
 instance Show Term where
   show (Var nm) = nm

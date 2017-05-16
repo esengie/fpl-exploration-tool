@@ -66,6 +66,12 @@ checkEq want have = do
   when (nf have /= nf want) $ Left $
     "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
 
+-- checkId :: (Show a, Eq a) => Term a -> Term a -> TC ()
+-- checkId want have = do
+--   when (have /= want) $ Left $
+--     "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
+
+
 report :: String -> TC (Type a)
 report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 
@@ -76,13 +82,14 @@ consCtx :: Type a -> Ctx a -> Ctx (Var a)
 consCtx ty ctx B = pure (F <$> ty)
 consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
--- infer in the empty context
-infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
-infer0 = infer emptyCtx
 
 infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
 infer ctx (Var a) = ctx a
 infer ctx TyDef   = throwError "Can't have def : def"
+
+-- infer in the empty context
+infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
+infer0 = infer emptyCtx
 
 -- from reductions
 nf :: (Show a, Eq a) => Term a -> Term a

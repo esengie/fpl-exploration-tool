@@ -33,6 +33,7 @@ There are 2 modules: SortCheck and CodeGen, and two functions codeGenIO and sort
 - may subst only into metavars
 
 - if variables of metavariables (X) have type of metavars, they may use only metavars that come before X in funsym in conclusion (Eg: |--- |- f(A, x.B, z.Y, r.T) -- here z may use only A and B as its' type, x may use only A, while r may use A, B, and Y)
+- so if we have f(..., xy.T) we demand a premise looking like this ctx |- T !
 
 - only parts of reductions used are these a => b (context, types or premises are not taken into account yet)
 - in reductions a => b all(!) metavars of b must be present in a

@@ -29,14 +29,13 @@ buildRight' fs ax = do
   genCheckStability $ stab ax
   -- populate foralls
   populateForalls (forallVars ax)
-  -- write all metas given as args
+  -- write all metas given as args + add |- A judgements to be inferred
   correctFresh ax
   -- check metas for equality and leave only one in map if many
   genCheckMetaEq
   -- find all used Metavars + check for equality where needed
   -- First check all guys of the smth : T - build up the map (metavars : Term)
   mapM_ labelJudgement (premise ax)
-
   -- returns checks for contexts and infers the part after |-
   -- equality goes like this "checkEq a b >> infer (consCtx v) a"
   -- [[Exp]]
@@ -102,12 +101,16 @@ stmtsAndTmEqLast (tm, ct, x:xs) = do
 -- first vars are already used
 -- also axioms are always of the form like this
 correctFresh :: Axiom -> BldRM ()
-correctFresh (Axiom _ _ _ _ (Statement _ (FunApp _ lst) _)) = populateSt lst
+correctFresh (Axiom _ _ _ prems (Statement _ (FunApp _ lst) _)) = populateSt lst
   where
     populateSt ((ct, Meta mv):xs) = do
       v <- fresh
       metas %= updateMap mv (ct, fromScope (length ct) $ var (name v))
       populateSt xs
+      -- user may have not added these
+      when (null ct && not (elem mv (concat $ ctMetas <$> prems))) $
+        juds.otherJuds %= (Statement [] (Meta mv) Nothing : )
+
     populateSt [] = return ()
     populateSt _ = throwError "Can't have a non metavariable in an axiom concl"
 correctFresh _ = throwError $ "error: Only axioms with funsym intro are allowed"

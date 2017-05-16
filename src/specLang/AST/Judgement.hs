@@ -6,7 +6,8 @@ module AST.Judgement(
   isRedJudgement,
   showCtx,
   jContext,
-  judCtx
+  judCtx,
+  ctMetas
 ) where
 
 import Data.List(intercalate)
@@ -37,6 +38,9 @@ makeLenses ''Judgement
 
 judCtx :: Judgement -> Ctx
 judCtx jud = jud^.jContext.to (map fst)
+
+ctMetas :: Judgement -> [MetaVar]
+ctMetas jud = unMeta <$> filter isMeta (jud^.jContext.to (map snd))
 
 instance Show Judgement where
   show (Statement ctx tm Nothing) = concat [
