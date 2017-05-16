@@ -93,8 +93,8 @@ nf TyDef   = TyDef
 nf':: (Show a, Eq a) => Cnt -> Term a -> Term a
 nf' = undefined
 
-cstable :: (Show a, Eq a) => Ctx a -> Term a -> [Type a] -> TC (Type ())
-cstable ctx tm lst = traverse fun tm
+stable :: (Show a, Eq a) => Ctx a -> Term a -> [Type a] -> TC (Type ())
+stable ctx tm lst = traverse fun tm
   where
     fun x | any (\y -> ctx x == pure y) lst = pure ()
           | otherwise = Left $ "Term is not cstable " ++ show tm

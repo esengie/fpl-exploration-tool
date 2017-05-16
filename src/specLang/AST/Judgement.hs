@@ -2,6 +2,7 @@
 
 module AST.Judgement(
   Judgement(..),
+  Stab,
   isEqJudgement,
   isRedJudgement,
   showCtx,
@@ -35,6 +36,8 @@ data Judgement =
 }
 
 makeLenses ''Judgement
+
+type Stab = Maybe [Term]
 
 judCtx :: Judgement -> Ctx
 judCtx jud = jud^.jContext.to (map fst)

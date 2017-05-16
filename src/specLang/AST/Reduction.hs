@@ -6,8 +6,8 @@ import AST.Term
 import AST.Judgement
 
 data Reduction = Reduction {
-  name     :: Name,
-  stability  :: Maybe [Term],
+  name       :: Name,
+  stab       :: Stab,
   forallVars :: [(MetaVar, Sort)],
   premise    :: [Judgement],
   conclusion :: Judgement

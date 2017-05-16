@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import AST
 import AST.Axiom as Axiom
 import SortCheck.SymbolTable as SymbolTable
+import SortCheck.Term(checkStab)
 import SortCheck.Judgement
 import SortCheck.Forall
 
@@ -84,11 +85,12 @@ checkAx ax@(Axiom name stab forall prem concl) = do
   unless (null $ _jContext concl) $
     throwError $ "Conclusion must have empty context: " ++ name
 
+  stab' <- checkStab stab
   forall' <- checkForallVars forall
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl
 
-  return (Axiom name stab forall' prem' concl')
+  return (Axiom name stab' forall' prem' concl')
 
 
 

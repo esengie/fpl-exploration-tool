@@ -4,7 +4,8 @@ module CodeGen.RightSide.Exprs(
   buildTermExp,
   buildTermPat,
   buildCheckExps,
-  buildInferExps
+  buildInferExps,
+  genCheckStability
 ) where
 
 import Control.Monad.Except (throwError, lift)
@@ -174,6 +175,22 @@ buildTermPat ctx (FunApp nm lst) = do
   let pats' = (\(ctx', p) -> unScope (length ctx') p) <$>
               zipWith (\(c,t) p -> (c,p)) lst pats
   return $ pApp (name $ caps nm) pats'
+
+genCheckStability :: Stab -> BldRM ()
+genCheckStability sty = do
+  styEx <- stability sty
+  case styEx of
+    Nothing -> return ()
+    Just (ex) -> appendExp ex
+
+stability :: Stab -> BldRM (Maybe Exp)
+stability Nothing = return Nothing
+stability (Just lst) = do
+  -- note that this works, but we have to have checked
+  -- terms contain no metavars or substs!!!
+  exps <- mapM (buildTermExp []) lst
+  return . pure $ appFun stabE [ctxE, var tmAlias, listE exps]
+
 
 
 

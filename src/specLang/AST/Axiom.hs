@@ -7,7 +7,7 @@ import AST.Judgement
 
 data Axiom = Axiom {
   name       :: Name,
-  stability  :: Maybe [Term],
+  stab       :: Stab,
   forallVars :: [(MetaVar, Sort)],
   premise    :: [Judgement],
   conclusion :: Judgement

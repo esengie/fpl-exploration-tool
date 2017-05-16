@@ -14,8 +14,9 @@ import qualified Data.Map as Map
 import AST
 import AST.Reduction as Reduction
 import SortCheck.SymbolTable as SymbolTable
-import SortCheck.Judgement
 import SortCheck.Forall
+import SortCheck.Term(checkStab)
+import SortCheck.Judgement
 
 --------------------------------------------------------------------------------
 -- Reductions
@@ -39,11 +40,12 @@ checkRed red@(Reduction name stab forall prem concl) = do
   unless (isRedJudgement concl) $
     throwError $ "Must be a reduction: " ++ name
 
+  stab' <- checkStab stab
   forall' <- checkForallVars forall
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl
 
-  return (Reduction name stab forall' prem' concl')
+  return (Reduction name stab' forall' prem' concl')
 
 checkConclRed :: Judgement -> SortCheckM ()
 checkConclRed r@(Reduct _ lft rt _) = do

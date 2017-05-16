@@ -26,6 +26,7 @@ buildRightInfer fss fs ax = -- pure ExprHole
 
 buildRight' :: FunctionalSymbol -> Axiom -> BldRM Exp
 buildRight' fs ax = do
+  genCheckStability $ stab ax
   -- populate foralls
   populateForalls (forallVars ax)
   -- write all metas given as args
