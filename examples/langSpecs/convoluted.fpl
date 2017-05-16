@@ -1,3 +1,4 @@
+[Unstable]
 DependentSorts :
   tm, ty, tn
 
@@ -37,7 +38,6 @@ Axioms :
     forall S : ty , x.T : ty , x.t : tm
       x : S |- t : T |--- |- lam(S , x.t) : pi(S , x.T)
 
-  -- [Stable - Bool]
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
       |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2, x.T) : T[x:=t2]
@@ -47,9 +47,8 @@ Axioms :
       z: bool|- t1 : pi(S, x.T[y:=true]) , z : bool |- t2 : S |---- |- sigma(t1, t2, z.S, (y x).T) : T[x:=t2][y:= t2]
 
 Reductions :
-  Beta = -- not impl
+  Beta =
     forall x.b : tm, A : ty, a : tm, z.T : ty
-      -- |--- |- app(b[x:=a], a) => b[x := a] : T[x:=a]
        |--- |- app(lam(A , x.app(a, b, z.T)) , a, z.T) => b[x := a] -- : T[z:=a]
 
   IfRed1 =
