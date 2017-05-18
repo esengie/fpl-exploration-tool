@@ -5,6 +5,7 @@ module SortCheck.SymbolTable(
   SortCheckM(..),
   SortError(..),
   varsInit,
+  stabs,
   depSorts,
   simpleSorts,
   funSyms,
@@ -29,7 +30,8 @@ import AST.Axiom as Axiom
 import AST.Reduction as Reduction
 
 data SymbolTable = SymbolTable {
-  _depSorts      :: Set AST.SortName
+  _stabs         :: AST.Stab
+, _depSorts      :: Set AST.SortName
 , _simpleSorts   :: Set AST.SortName
 , _funSyms       :: Map AST.Name AST.FunctionalSymbol
 , _axioms        :: Map AST.Name Axiom
@@ -43,7 +45,7 @@ type SortCheckM = StateT SymbolTable (Either SortError)
 type SortError = String
 
 varsInit :: SymbolTable
-varsInit = SymbolTable Set.empty Set.empty Map.empty Map.empty Map.empty Map.empty
+varsInit = SymbolTable Nothing Set.empty Set.empty Map.empty Map.empty Map.empty Map.empty
 
 funToAx :: SymbolTable -> AST.FunctionalSymbol -> Maybe Axiom
 funToAx table fun = do
@@ -66,7 +68,7 @@ unJustStr msg _ Nothing = msg
 unJustStr _ f (Just a) = f a
 
 instance Show SymbolTable where
-  show tb@(SymbolTable dep simp fun ax red symAx) = concat [
+  show tb@(SymbolTable _ dep simp fun ax red symAx) = concat [
     "Dep:\n  ", AST.showCtx id (Set.toList dep), "\n",
     "Sim:\n  ", AST.showCtx id (Set.toList simp), "\n",
     "Fun:", AST.showCtx (\x -> helper "\n  " x ++ " intro: " ++

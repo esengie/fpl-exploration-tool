@@ -1,6 +1,7 @@
 module AST(
   LangSpec(..),
   deStabSpec,
+  addStabSpec,
   module X
 ) where
 
@@ -14,6 +15,7 @@ import AST.Reduction as Red
 -- like some sorts are assumed independent, but in reality they are
 data LangSpec = LangSpec {
   stable          :: Bool
+, stabilities     :: Stab
 , depSortNames    :: [SortName]
 , simpleSortNames :: [SortName]
 , funSyms         :: [FunctionalSymbol]
@@ -22,12 +24,18 @@ data LangSpec = LangSpec {
 }
 
 deStabSpec :: LangSpec -> LangSpec
-deStabSpec (LangSpec v1 v2 v3 v4 axes reds) = LangSpec v1 v2 v3 v4 axes' reds'
+deStabSpec (LangSpec v1 v2 v3 v4 v5 axes reds) = LangSpec v1 (deStab v2) v3 v4 v5 axes' reds'
   where axes' = (\ax -> ax{Ax.stab = deStab (Ax.stab ax)}) <$> axes
         reds' = (\r ->  r{Red.stab = deStab (Red.stab r)}) <$> reds
 
+addStabSpec :: LangSpec -> LangSpec
+addStabSpec (LangSpec v1 v2 v3 v4 v5 axes reds) = LangSpec v1 v2 v3 v4 v5 axes' reds'
+  where axes' = (\ax -> ax{Ax.stab = addStab (Ax.stab ax) v2}) <$> axes
+        reds' = (\r ->  r{Red.stab = addStab (Red.stab r) v2}) <$> reds
+
+
 instance Show LangSpec where
-  show (LangSpec st dep simp fun ax red) = concat [
+  show (LangSpec st lst dep simp fun ax red) = concat [
     if st then "Stable\n" else "Unstable\n",
     "Dep:\n  ", showCtx id dep, "\n",
     "Sim:\n  ", showCtx id simp, "\n",

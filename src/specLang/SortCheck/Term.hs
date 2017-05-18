@@ -128,7 +128,6 @@ fixStab msg (FunApp f args) = do
     tm' <- fixStab msg tm
     return (ct, tm')) args
   return (FunApp f args')
-
 fixStab msg _ = throwError msg
 
 

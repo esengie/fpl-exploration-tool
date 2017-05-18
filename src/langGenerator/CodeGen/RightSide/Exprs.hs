@@ -5,7 +5,8 @@ module CodeGen.RightSide.Exprs(
   buildTermPat,
   buildCheckExps,
   buildInferExps,
-  genCheckStability
+  genCheckStability,
+  buildStabilityExp,
 ) where
 
 import Control.Monad.Except (throwError, lift)
@@ -177,19 +178,20 @@ buildTermPat ctx (FunApp nm lst) = do
   return $ pApp (name $ caps nm) pats'
 
 genCheckStability :: Stab -> BldRM ()
-genCheckStability sty = do
-  styEx <- stability sty
-  case styEx of
-    Nothing -> return ()
-    Just (ex) -> appendExp ex
+genCheckStability sty = return ()
+  -- do
+  -- styEx <- stability sty
+  -- case styEx of
+  --   Nothing -> return ()
+  --   Just (ex) -> appendExp ex
 
-stability :: Stab -> BldRM (Maybe Exp)
-stability Nothing = return Nothing
-stability (Just lst) = do
+buildStabilityExp :: Stab -> BldRM (Maybe Exp)
+buildStabilityExp Nothing = return Nothing
+buildStabilityExp (Just lst) = do
   -- note that this works, but we have to have checked
   -- terms contain no metavars or substs!!!
   exps <- mapM (buildTermExp []) lst
-  return . pure $ appFun stabE [ctxE, var tmAlias, listE exps]
+  return . pure $ listE exps
 
 
 

@@ -7,6 +7,7 @@ module SortCheck (
 ) where
 
 import Control.Monad.Trans.State.Lazy
+import Control.Lens
 
 import AST
 import SortCheck.SymbolTable as X
@@ -14,6 +15,7 @@ import SortCheck.Sort
 import SortCheck.FunSym
 import SortCheck.Axiom
 import SortCheck.Reduction
+import SortCheck.Term (checkStab)
 
 import Parser (parseLang)
 
@@ -21,6 +23,7 @@ sortCheck :: LangSpec -> SortCheckM ()
 sortCheck lsp = do
     sortCheckSorts lsp
     sortCheckFunSyms (AST.funSyms lsp)
+    stabs <~ checkStab (AST.stabilities lsp)
     sortCheckAxioms (AST.axioms lsp)
     sortCheckReductions (AST.reductions lsp)
 

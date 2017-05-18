@@ -1,4 +1,5 @@
 [Unstable]
+[bool]
 DependentSorts :
   tm, ty, tn
 
@@ -13,7 +14,6 @@ FunctionalSymbols :
   sigma : (tm,0) * (tm, 0) * (ty, 1) * (ty, 2) -> tm
 
 Axioms :
-  [bool, pi(bool, x.bool)]
   Tr =
     forall
       |--- |- true : bool

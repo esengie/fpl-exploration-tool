@@ -30,7 +30,8 @@ module AST.Term(
   toListM,
   changeError,
   Stab,
-  deStab
+  deStab,
+  addStab
 ) where
 
 import qualified Data.Set as Set
@@ -42,6 +43,8 @@ type Name = String
 type ContextDepth = Int
 type DefaultErr = Either String
 
+-- Nothing - means stable
+-- else stable only for x in (Just x)
 type Stab = Maybe [Term]
 
 changeError :: String -> DefaultErr a -> DefaultErr a
@@ -180,6 +183,9 @@ deStab :: Stab -> Stab
 deStab Nothing = Just []
 deStab x = x
 
-
+addStab :: Stab -> Stab -> Stab
+addStab x Nothing = x
+addStab Nothing x = x
+addStab (Just x) (Just y) = Just (x ++ y)
 
 --

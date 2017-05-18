@@ -4,8 +4,9 @@ module CodeGen(
 -- , module X
 ) where
 
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Lazy
+import Control.Monad.State
+import Control.Monad.Reader
+import Data.Map as Map
 import Control.Applicative (liftA3)
 
 import Control.Monad.Except (throwError, lift)
@@ -13,13 +14,15 @@ import Language.Haskell.Exts.Simple
 import Control.Lens
 
 import SortCheck
-import AST hiding (Var)
+import AST.Axiom as Ax
+import AST.Reduction as Red
 
 import CodeGen.Common as X
 import CodeGen.ADT
 import CodeGen.MonadInstance
 import CodeGen.Infer as X
 import CodeGen.Nf as X
+import CodeGen.ConsCtx as X
 
 --------------------------------------------------------------------------------
 -- Main place
@@ -49,9 +52,16 @@ gene = codeGenIO "examples/langSpecs/convoluted.fpl" >>= putStrLn
 
 buildModule :: Module -> GenM Module
 buildModule (Module a b c _) = do
+  ------------
+  symtab <- ask
+  unless (all (== (symtab^.stabs)) $ (Ax.stab <$> (Map.elems $ symtab^.SortCheck.axioms)) ++
+                                     (Red.stab <$> (Map.elems $ symtab^.SortCheck.reductions))) $
+    throwError "As of now either all axioms and reductions are c-stable or all are stable"
+  -----------------------------------------------------------
   genTerms
   genSortTypes
   genMonad
+  genConsCtx
   genInfer
   genNf
   decl <- lift $ gets decls

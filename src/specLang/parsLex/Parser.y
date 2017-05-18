@@ -48,10 +48,18 @@ import Lexer
 
 %%
 
-LangSpec        :   Sorts FunSyms AxRed           { LangSpec True (fst $1) (snd $1) $2 (fst $3) (snd $3) }
-                |   Unstable Sorts FunSyms AxRed  { deStabSpec (LangSpec $1 (fst $2) (snd $2) $3 (fst $4) (snd $4)) }
+LangSpec        :   Sorts FunSyms AxRed
+                        { LangSpec True Nothing (fst $1) (snd $1) $2 (fst $3) (snd $3) }
+                |   GlobalSts Sorts FunSyms AxRed
+                        { addStabSpec (LangSpec True $1 (fst $2) (snd $2) $3 (fst $4) (snd $4))   }
+                |   Unstable Sorts FunSyms AxRed
+                        { deStabSpec (LangSpec $1 Nothing (fst $2) (snd $2) $3 (fst $4) (snd $4)) }
+                |   Unstable GlobalSts Sorts FunSyms AxRed
+                        { (addStabSpec . deStabSpec)
+                            (LangSpec $1 $2 (fst $3) (snd $3) $4 (fst $5) (snd $5)) }
 
 Unstable        :   '[' unstable ']'                          { False    }
+GlobalSts       :  '[' CommaSepTerms ']'                      { Just $2  }
 
 Sorts           :   DepSorts SimpleSorts                      { ($1, $2) }
                 |   SimpleSorts DepSorts                      { ($2, $1) }

@@ -73,7 +73,7 @@ getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement i
 -- need to check forall var types and change them if need be
 -- check redefinition, fix forallvars, check types inside each judgement
 checkAx :: Axiom -> SortCheckM Axiom
-checkAx ax@(Axiom name stab forall prem concl) = do
+checkAx ax@(Axiom name stabs forall prem concl) = do
   st <- get
 
   when (Map.member name $ st^.SymbolTable.axioms) $
@@ -85,7 +85,7 @@ checkAx ax@(Axiom name stab forall prem concl) = do
   unless (null $ _jContext concl) $
     throwError $ "Conclusion must have empty context: " ++ name
 
-  stab' <- checkStab stab
+  stab' <- checkStab stabs
   forall' <- checkForallVars forall
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl

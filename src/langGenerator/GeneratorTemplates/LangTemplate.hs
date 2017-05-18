@@ -10,6 +10,9 @@ module LangTemplate(
   nf
 ) where
 
+-- Note: search is through fun name prefix matching.
+-- So if you switch infer and infer0 guess what happens
+
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)
 import Data.Functor.Classes
@@ -78,9 +81,13 @@ report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 emptyCtx :: Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 
+
 consCtx :: Type a -> Ctx a -> Ctx (Var a)
-consCtx ty ctx B = pure (F <$> ty)
-consCtx ty ctx (F a)  = (F <$>) <$> ctx a
+consCtx x = consCtx' x
+
+consCtx' :: Type a -> Ctx a -> Ctx (Var a)
+consCtx' ty ctx B = pure (F <$> ty)
+consCtx' ty ctx (F a)  = (F <$>) <$> ctx a
 
 
 infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
