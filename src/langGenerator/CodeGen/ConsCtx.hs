@@ -22,16 +22,8 @@ import CodeGen.Common
 import CodeGen.RightSide.Common
 import CodeGen.RightSide.Exprs (buildStabilityExp)
 
-consCtx :: Exp -> Decl
-consCtx ex = FunBind ([Match (Ident "consCtx")
-                                    [pvar (name "x")]
-                                    (UnGuardedRhs $ rhs ex)
-                                    Nothing])
-  where
-    rhs ex = undefined
-
-errCons :: Exp -> Exp
-errCons = App (Var (UnQual (Ident "consErr")))
+errCons :: [Exp] -> Exp
+errCons = appFun (var $ name "consErr")
 
 genConsCtx :: GenM ()
 genConsCtx = do
@@ -43,6 +35,13 @@ genConsCtx = do
       let res = consCtx x
       replaceDecls "consCtx" [res]
 
+consCtx :: Exp -> Decl
+consCtx lst = funDecl "consCtx" [pvar . name <$> vars] [If check trueCons $ errCons [varX, lst]]
+  where
+    vars = ["x", "ct", "var"]
+    varX = var $ name "x"
+    check = appFun (var $ name "elem") [varX, lst]
+    trueCons = appFun (var $ name "consCtx'") (var . name <$> vars)
 
 
 ---

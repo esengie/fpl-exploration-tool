@@ -71,8 +71,8 @@ sortToTyCtor x = caps x ++ "Def"
 
 fname = "f"
 
-funLeft :: String -> [[Pat]] -> [Exp] -> Decl
-funLeft nm pat exps = FunBind $ zipWith (\x y -> Match (Ident nm) x (UnGuardedRhs y) Nothing) pat exps
+funDecl :: String -> [[Pat]] -> [Exp] -> Decl
+funDecl nm pat exps = FunBind $ zipWith (\x y -> Match (Ident nm) x (UnGuardedRhs y) Nothing) pat exps
 
 sortToTyName :: String -> String
 sortToTyName nm

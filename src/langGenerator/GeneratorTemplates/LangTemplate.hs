@@ -56,8 +56,6 @@ instance Monad Term where
   Var a >>= f = f a
   TyDef >>= f = TyDef
 
-type TermEq a = Term a -> Term a -> Bool
-
 checkT :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
 checkT ctx want t = do
   have <- infer ctx t
@@ -78,17 +76,19 @@ checkEq want have = do
 report :: String -> TC (Type a)
 report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 
-emptyCtx :: Ctx a
+emptyCtx :: (Show a, Eq a) => Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 
 
-consCtx :: Type a -> Ctx a -> Ctx (Var a)
+consCtx :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)
 consCtx x = consCtx' x
 
-consCtx' :: Type a -> Ctx a -> Ctx (Var a)
+consCtx' :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)
 consCtx' ty ctx B = pure (F <$> ty)
 consCtx' ty ctx (F a)  = (F <$>) <$> ctx a
 
+consErr :: (Show a, Eq a) => Type a -> [Type a] -> TC (Type (Var a))
+consErr t lst = throwError $ show t ++ " is not in " ++ show lst
 
 infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
 infer ctx (Var a) = ctx a

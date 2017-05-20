@@ -25,13 +25,6 @@ import CodeGen.RightSide.Infer (buildRightInfer)
 import CodeGen.RightSide.Helpers (tmAlias)
 
 --------------------------------------------------------------------------
-bri = buildRightInfer
-fMap = Map.insert "f" fFunS Map.empty
-fFunS = (FunSym "f" [DepSort "asd" 12, DepSort "a" 22] (DepSort "as" 1))
-fTm = Subst (AST.Var "asd") "asd" (AST.Var "er")
-fJud = Statement [] fTm Nothing
-fAx = Axiom "as" Nothing [] [] fJud
---------------------------------------------------------------------------
 
 fsymLeft :: FunctionalSymbol -> [Pat]
 fsymLeft f = [PVar (Ident "ctx"), funToPat f]
@@ -65,7 +58,7 @@ genInfer = do
   fRight <- lift . lift $ sequence fRight'
 
   --- Gather and build a resulting function
-  let res = funLeft "infer" (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
+  let res = funDecl "infer" (varL : sortsL ++ fLeft) (varR : sortsR ++ fRight)
   replaceDecls "infer" [res]
 
 

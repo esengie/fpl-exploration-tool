@@ -56,7 +56,7 @@ genNf = do
   let nf'Rs = concat (snd <$> fRight)
 
   --- Gather and build a resulting function
-  let res = funLeft "nf" (varL : sortsL ++ fLeft) (varR : sortsR ++ nfRs)
+  let res = funDecl "nf" (varL : sortsL ++ fLeft) (varR : sortsR ++ nfRs)
   replaceDecls "nf" [res]
   replaceDecls "nf'" [funNf' nf'Rs]
 
