@@ -9,6 +9,8 @@ module AST.Term(
   FunctionalSymbol(..),
   MetaVar(..),
   Term(..),
+  isMeta,
+  unMeta,
   varSort,
   tyName,
   tmName,
@@ -26,7 +28,10 @@ module AST.Term(
   allUnique,
   isSubset,
   toListM,
-  changeError
+  changeError,
+  Stab,
+  deStab,
+  addStab
 ) where
 
 import qualified Data.Set as Set
@@ -37,6 +42,10 @@ type VarName = String
 type Name = String
 type ContextDepth = Int
 type DefaultErr = Either String
+
+-- Nothing - means stable
+-- else stable only for x in (Just x)
+type Stab = Maybe [Term]
 
 changeError :: String -> DefaultErr a -> DefaultErr a
 changeError msg (Left x) = Left (msg ++ "\n\t" ++ x)
@@ -133,6 +142,13 @@ toListM (Meta mv) = [mv]
 toListM (Subst tm1 _ tm2) = toListM tm1 ++ toListM tm2
 toListM (FunApp _ lst) = concat (toListM . snd <$> lst)
 
+isMeta :: Term -> Bool
+isMeta (Meta _) = True
+isMeta _ = False
+
+unMeta :: Term -> MetaVar
+unMeta (Meta mv) = mv
+
 instance Show Term where
   show (Var nm) = nm
   show (Meta vr) = mName vr ++ "-m"
@@ -163,8 +179,13 @@ allUnique a = length a == Set.size (Set.fromList a)
 isSubset :: Ord a => [a] -> [a] -> Bool
 isSubset a b = 0 == Set.size (Set.difference (Set.fromList a) (Set.fromList b))
 
+deStab :: Stab -> Stab
+deStab Nothing = Just []
+deStab x = x
 
-
-
+addStab :: Stab -> Stab -> Stab
+addStab x Nothing = x
+addStab Nothing x = x
+addStab (Just x) (Just y) = Just (x ++ y)
 
 --

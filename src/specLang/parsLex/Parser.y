@@ -20,6 +20,7 @@ import Lexer
 %token
       int             { Token _ (TInt $$)   }
       ident           { Token _ (TIdent $$) }
+      unstable        { Token _ TUnstab     }
       depSortBeg      { Token _ TDepS       }
       simpleSortBeg   { Token _ TSimpleS    }
       funSymBeg       { Token _ TFunSyms    }
@@ -47,7 +48,18 @@ import Lexer
 
 %%
 
-LangSpec        :   Sorts FunSyms AxRed  { LangSpec (fst $1) (snd $1) $2 (fst $3) (snd $3) }
+LangSpec        :   Sorts FunSyms AxRed
+                        { LangSpec True Nothing (fst $1) (snd $1) $2 (fst $3) (snd $3) }
+                |   GlobalSts Sorts FunSyms AxRed
+                        { addStabSpec (LangSpec True $1 (fst $2) (snd $2) $3 (fst $4) (snd $4))   }
+                |   Unstable Sorts FunSyms AxRed
+                        { deStabSpec (LangSpec $1 Nothing (fst $2) (snd $2) $3 (fst $4) (snd $4)) }
+                |   Unstable GlobalSts Sorts FunSyms AxRed
+                        { (addStabSpec . deStabSpec)
+                            (LangSpec $1 $2 (fst $3) (snd $3) $4 (fst $5) (snd $5)) }
+
+Unstable        :   '[' unstable ']'                          { False    }
+GlobalSts       :  '[' CommaSepTerms ']'                      { Just $2  }
 
 Sorts           :   DepSorts SimpleSorts                      { ($1, $2) }
                 |   SimpleSorts DepSorts                      { ($2, $1) }
@@ -84,15 +96,18 @@ Axioms          :   Axiom                                     { [$1] }
 Reductions      :   Reduction                                 { [$1] }
                 |   Reduction Reductions                      { $1 : $2 }
 
-Axiom           :   ident '=' '\t' Forall '\t'
-                      Premise '|---' JudgementNoEq '/t' '/t'  { Axiom $1 $4 $6 $8 }
-                |   ident '=' '\t' Forall '\t'
-                      '|---' JudgementNoEq '/t' '/t'          { Axiom $1 $4 [] $7 }
+Axiom           :   Header '=' '\t' Forall '\t'
+                      Premise '|---' JudgementNoEq '/t' '/t'  { Axiom (snd $1) (fst $1) $4 $6 $8 }
+                |   Header '=' '\t' Forall '\t'
+                      '|---' JudgementNoEq '/t' '/t'          { Axiom (snd $1) (fst $1) $4 [] $7 }
 
-Reduction       :   ident '=' '\t' Forall '\t'
-                      Premise '|---' JudgeReduct '/t' '/t'    { Reduction $1 $4 $6 $8 }
-                |   ident '=' '\t' Forall '\t'
-                      '|---' JudgeReduct '/t' '/t'            { Reduction $1 $4 [] $7 }
+Reduction       :   Header '=' '\t' Forall '\t'
+                      Premise '|---' JudgeReduct '/t' '/t'    { Reduction (snd $1) (fst $1) $4 $6 $8 }
+                |   Header '=' '\t' Forall '\t'
+                      '|---' JudgeReduct '/t' '/t'            { Reduction (snd $1) (fst $1) $4 [] $7 }
+
+Header          :   ident                                     { (Nothing, $1) }
+                |   '[' CommaSepTerms ']' ident               { (Just $2, $4) }
 
 Forall          :   V ForallVars                              { $2 }
                 |   V                                         { [] } -- will fix later if at all
@@ -134,7 +149,7 @@ Context         :   ident ':' Term                            { [($1, $3)] }
 
 ---      neeed [] much tighter than others + no (a b). stuff on the upper levels!
 Term            :   ident                                     { Var $1 }
-                |   ident '(' CommaSepTerms ')'               { FunApp $1 $3 }
+                |   ident '(' CommaSepCtTerms ')'             { FunApp $1 $3 }
                 |   Term '[' ident ':=' Term ']'              { Subst $1 $3 $5 }
 
 CombTerm        :   Term                                      {  ([], $1)  }
@@ -143,8 +158,11 @@ CombTerm        :   Term                                      {  ([], $1)  }
 InnerTerm       :   ident '.' Term                            { ([$1], $3) }
                 |   '(' SpaceSepNames ')' '.' Term            { ($2, $5) }
 
-CommaSepTerms   :   CombTerm                                  { [$1] }
-                |   CombTerm ',' CommaSepTerms                { $1 : $3 }
+CommaSepCtTerms :   CombTerm                                  { [$1] }
+                |   CombTerm ',' CommaSepCtTerms              { $1 : $3 }
+
+CommaSepTerms   :   Term                                      { [$1] }
+                |   Term ',' CommaSepTerms                    { $1 : $3 }
 
 
 {

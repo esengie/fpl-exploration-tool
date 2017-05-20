@@ -14,8 +14,9 @@ import qualified Data.Map as Map
 import AST
 import AST.Reduction as Reduction
 import SortCheck.SymbolTable as SymbolTable
-import SortCheck.Judgement
 import SortCheck.Forall
+import SortCheck.Term(checkStab)
+import SortCheck.Judgement
 
 --------------------------------------------------------------------------------
 -- Reductions
@@ -30,7 +31,7 @@ sortCheckReductions (red : reds) = do
   sortCheckReductions reds
 
 checkRed :: Reduction -> SortCheckM Reduction
-checkRed red@(Reduction name forall prem concl) = do
+checkRed red@(Reduction name stabs forall prem concl) = do
   st <- get
 
   when (isJust $ Map.lookup name (st^.SymbolTable.reductions)) $
@@ -39,17 +40,19 @@ checkRed red@(Reduction name forall prem concl) = do
   unless (isRedJudgement concl) $
     throwError $ "Must be a reduction: " ++ name
 
+  stab' <- checkStab stabs
   forall' <- checkForallVars forall
   prem' <- mapM (checkJudgem forall') prem
   concl' <- checkJudgem forall' concl
 
-  return (Reduction name forall' prem' concl')
+  return (Reduction name stab' forall' prem' concl')
 
 checkConclRed :: Judgement -> SortCheckM ()
 checkConclRed r@(Reduct _ lft rt _) = do
   noSubstLeft ("Subst on the left of reduction " ++ show r) lft
   unless (isSubset (toListM rt) (toListM lft)) $
     throwError $ "Not all metavars on right of " ++ show r ++ " are on the left"
+checkConclRed _ = throwError $ "Reduction must be a reduct, impl error"
 
 noSubstLeft :: String -> Term -> SortCheckM ()
 noSubstLeft msg (Subst{}) = throwError msg

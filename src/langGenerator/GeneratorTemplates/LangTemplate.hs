@@ -1,8 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- May change name and add exports etc.
-module LangTemplate
-  where
+module LangTemplate(
+  TC,
+  Ctx,
+  consCtx,
+  Term(..),
+  infer,
+  infer0,
+  nf
+) where
+
+-- Note: search is through fun name prefix matching.
+-- So if you switch infer and infer0 guess what happens
 
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)
@@ -47,8 +56,6 @@ instance Monad Term where
   Var a >>= f = f a
   TyDef >>= f = TyDef
 
-type TermEq a = Term a -> Term a -> Bool
-
 checkT :: (Show a, Eq a) => Ctx a -> Type a -> Term a -> TC ()
 checkT ctx want t = do
   have <- infer ctx t
@@ -60,26 +67,32 @@ checkEq want have = do
   when (nf have /= nf want) $ Left $
     "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
 
+-- checkId :: (Show a, Eq a) => Term a -> Term a -> TC ()
+-- checkId want have = do
+--   when (have /= want) $ Left $
+--     "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
 
-infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
-infer ctx (Var a) = ctx a
-infer ctx TyDef   = throwError "Can't have def : def"
 
 report :: String -> TC (Type a)
 report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 
-emptyCtx :: Ctx a
+emptyCtx :: (Show a, Eq a) => Ctx a
 emptyCtx = (const $ Left "variable not in scope")
 
-consCtx :: Type a -> Ctx a -> Ctx (Var a)
-consCtx ty ctx B = pure (F <$> ty)
-consCtx ty ctx (F a)  = (F <$>) <$> ctx a
 
-fromList :: Eq a => [(a, Type a)] -> Ctx a
-fromList [] = emptyCtx
-fromList ((x,t):xs) = \y -> if (x == y)
-                              then return t
-                              else fromList xs y
+consCtx :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)
+consCtx x = consCtx' x
+
+consCtx' :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)
+consCtx' ty ctx B = pure (F <$> ty)
+consCtx' ty ctx (F a)  = (F <$>) <$> ctx a
+
+consErr :: (Show a, Eq a) => Type a -> [Type a] -> TC (Type (Var a))
+consErr t lst = throwError $ show t ++ " is not in " ++ show lst
+
+infer :: (Show a, Eq a) => Ctx a -> Term a -> TC (Type a)
+infer ctx (Var a) = ctx a
+infer ctx TyDef   = throwError "Can't have def : def"
 
 -- infer in the empty context
 infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
@@ -92,6 +105,12 @@ nf TyDef   = TyDef
 
 nf':: (Show a, Eq a) => Cnt -> Term a -> Term a
 nf' = undefined
+
+stable :: (Show a, Eq a) => Ctx a -> Term a -> [Type a] -> TC (Type ())
+stable ctx tm lst = traverse fun tm
+  where
+    fun x | any (\y -> ctx x == pure y) lst = pure ()
+          | otherwise = Left $ "Term is not cstable " ++ show tm
 
 rt f x = runIdentity (traverse f x)
 
@@ -146,35 +165,6 @@ add4 (B ) = pure $ B
 add4 (F (B )) = pure $ F (B )
 add4 (F (F (B ))) = pure $ F (F (B ))
 add4 (F x) = pure $ F (F x)
-
--- -- Add useless binders
--- abstract0 :: Monad f => f a -> Scope b f a
--- abstract0 = abstract (const Nothing)
---
--- -- y.x -> f y.x
--- outBind1 :: Monad f => f a -> f (Var  a)
--- outBind1 x = fromScope $ abstract0 x
---
--- -- y.x -> f1 f2 y.x
--- outBind2 :: Monad f => f a -> f (Var  (Var  a))
--- outBind2 = outBind1 . outBind1
---
--- -- y.x -> f1 f2 f3 y.x
--- outBind3 :: Monad f => f a -> f (Var  (Var  (Var  a)))
--- outBind3 = outBind1 . outBind2
---
--- -- y.x -> y f.x
--- inBind1 :: Functor f => f a -> f (Var  a)
--- inBind1 x = F <$> x
---
--- -- y.x -> y f1 f2.x
--- inBind2 :: Functor f => f a -> f (Var  (Var  a))
--- inBind2 = inBind1 . inBind1
---
--- -- y.x -> y f1 f2 f3.x
--- inBind3 :: Monad f => f a -> f (Var  (Var  (Var  a)))
--- inBind3 = inBind1 . inBind2
-
 
 ------------- Swappers
 swap1'2 :: Var  (Var  a) -> Identity (Var  (Var  a))

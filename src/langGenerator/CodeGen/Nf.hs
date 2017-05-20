@@ -23,14 +23,6 @@ import CodeGen.MonadInstance (funToPat)
 import CodeGen.RightSide.Nf (buildRightNf)
 import CodeGen.RightSide.Helpers (tyCtor)
 
---------------------------------------------------------------------------
-bri = buildRightNf
-fMap = Map.insert "f" fFunS Map.empty
-fFunS = (FunSym "f" [DepSort "asd" 12, DepSort "a" 22] (DepSort "as" 1))
-fTm = Subst (AST.Var "asd") "asd" (AST.Var "er")
-fJud = Statement [] fTm Nothing
-fAx = Axiom "as" [] [] fJud
---------------------------------------------------------------------------
 
 funNf' :: [Match] -> Decl
 funNf' ms = FunBind (ms ++ [Match (Ident "nf'")
@@ -64,7 +56,7 @@ genNf = do
   let nf'Rs = concat (snd <$> fRight)
 
   --- Gather and build a resulting function
-  let res = funLeft "nf" (varL : sortsL ++ fLeft) (varR : sortsR ++ nfRs)
+  let res = funDecl "nf" (varL : sortsL ++ fLeft) (varR : sortsR ++ nfRs)
   replaceDecls "nf" [res]
   replaceDecls "nf'" [funNf' nf'Rs]
 

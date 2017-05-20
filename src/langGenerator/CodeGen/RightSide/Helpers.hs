@@ -92,6 +92,10 @@ add n ex = appFun rtE [var (name $ "add" ++ show n), ex]
 generator :: VarName -> Exp -> Stmt
 generator vn ex = Generator (PVar $ name vn) ex
 
+doExp :: [Stmt] -> Exp
+doExp ((Qualifier x):[]) = x
+doExp xs = doE xs
+
 infE = var (name "infer")
 checkE = var (name "checkT")
 ctxE = var (name "ctx")
@@ -99,12 +103,10 @@ consCtxE = var (name "consCtx")
 rtE = var (name "rt")
 travE = var (name "traverse")
 sortToExp nm = tyCtor $ sortToTyCtor nm
-tmAlias = name ("tmAlias")
+tmAlias = name ("al")
 nf'N = name "nf'"
 nfN = name "nf"
 unScopeP p = pApp (name "Scope") [p]
-
-doExp ((Qualifier x):[]) = x
-doExp xs = doE xs
+stabE = var (name "stable")
 
 ---

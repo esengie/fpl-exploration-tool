@@ -1,5 +1,6 @@
 module SortCheck.Term (
   checkTerm,
+  checkStab,
   checkCtxShadowing
 ) where
 
@@ -23,13 +24,13 @@ checkCtxShadowing ctx vars = do
 
 checkTerm :: MetaCtx -> Ctx -> Term -> SortCheckM (Term, Sort)
 checkTerm meta ctx tm = do
-  tm' <- fixTerm meta ctx tm
+  tm' <- fixTerm meta tm
   srt <- checkTerm' meta ctx tm'
   return (tm', srt)
 
 -- Need this as a second pass parser stage, as all identifiers are parsed as vars initially
-fixTerm :: MetaCtx -> Ctx -> Term -> SortCheckM Term
-fixTerm meta ctx (Var name) = do
+fixTerm :: MetaCtx -> Term -> SortCheckM Term
+fixTerm meta (Var name) = do
   st <- get
   if Map.member name (st^.SymbolTable.funSyms)
     then return (FunApp name [])
@@ -37,16 +38,14 @@ fixTerm meta ctx (Var name) = do
       Right (ret, _) -> return $ Meta ret
       Left _ -> return $ Var name
 
-fixTerm meta ctx (FunApp f args) = do
-  args' <- mapM (\(ctx', tm) -> do
-    ctx'' <- checkCtxShadowing ctx ctx'
-    tm' <- fixTerm meta ctx'' tm
-    return (ctx', tm')) args
+fixTerm meta (FunApp f args) = do
+  args' <- mapM (\(ct, tm) -> do
+    tm' <- fixTerm meta tm
+    return (ct, tm')) args
   return (FunApp f args')
-fixTerm meta ctx (Subst wher v what) = do
-  ctx' <- checkCtxShadowing ctx [v]
-  wher' <- fixTerm meta ctx' wher
-  what' <- fixTerm meta ctx what
+fixTerm meta (Subst wher v what) = do
+  wher' <- fixTerm meta wher
+  what' <- fixTerm meta what
   return (Subst wher' v what')
 
 -- Given a context + forall. (The sort of the term was checked)
@@ -108,6 +107,28 @@ checkMetaInSubst _ = throwError "May substitute only into metavars"
 -- when (varName `elem` ctx) $
 --   throwError "There shouldn't be naming conflicts during subst"
 
+checkStab :: Stab -> SortCheckM Stab
+checkStab Nothing = return Nothing
+checkStab (Just sty) = do
+  let msg = "Can't have metas or subst in stability "
+  sty' <- mapM (fixStab msg) sty
+  srts <- mapM (checkTerm' [] []) sty'
+  unless (all (\x -> getSortName x == tyName && getSortDepth x == 0) srts) $
+    throwError $ "Sorts of terms in cstability must be (ty,0): " ++ show sty
+  return . pure $ sty'
+
+fixStab :: String -> Term -> SortCheckM Term
+fixStab msg (Var nm) = do
+   st <- get
+   if Map.member nm (st^.SymbolTable.funSyms)
+     then return (FunApp nm [])
+     else return $ Var nm
+fixStab msg (FunApp f args) = do
+  args' <- mapM (\(ct, tm) -> do
+    tm' <- fixStab msg tm
+    return (ct, tm')) args
+  return (FunApp f args')
+fixStab msg _ = throwError msg
 
 
 
