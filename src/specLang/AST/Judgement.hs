@@ -4,6 +4,7 @@ module AST.Judgement(
   Judgement(..),
   isEqJudgement,
   isRedJudgement,
+  isStatement,
   showCtx,
   jContext,
   judCtx,
@@ -76,6 +77,10 @@ isEqJudgement _ = False
 isRedJudgement :: Judgement -> Bool
 isRedJudgement Reduct{} = True
 isRedJudgement _ = False
+
+isStatement :: Judgement -> Bool
+isStatement Statement{} = True
+isStatement _ = False
 
 
 

@@ -40,11 +40,15 @@ Axioms :
 
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
-      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2, x.T) : T[x:=t2]
+      |- t1 : pi(S, x.T) , |- t2 : S, x : S |- T def |---- |- app(t1 , t2, x.T) : T[x:=t2]
 
   TSig =
     forall t1 : tm , t2 : tm , z.S : ty, (x y).T : ty
-      z: bool|- t1 : pi(S, x.T[y:=true]) , z : bool |- t2 : S |---- |- sigma(t1, t2, z.S, (y x).T) : T[x:=t2][y:= t2]
+      z : bool  |- t1 : pi(S, x.T[y:=true]) ,
+      z : bool |- t2 : S ,
+      z : bool, x : S, y: S |- T def
+      |------------------------------------------------
+      |- sigma(t1, t2, z.S, (y x).T) : T[x:=t2][y:= t2]
 
 Reductions :
   Beta =

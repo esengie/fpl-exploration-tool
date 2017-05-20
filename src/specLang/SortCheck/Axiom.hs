@@ -18,6 +18,7 @@ import SortCheck.SymbolTable as SymbolTable
 import SortCheck.Term(checkStab)
 import SortCheck.Judgement
 import SortCheck.Forall
+import SortCheck.AxCtxVars (checkCtxVars)
 
 --------------------------------------------------------------------------------
 -- Axioms
@@ -47,25 +48,32 @@ sortCheckAxioms' (ax : axs) = do
 -- statements are always funSym intros
 -- we're here strictly after simple checking of terms => have all the funsyms we need
 getAxFunSym :: Axiom -> SortCheckM Name
-getAxFunSym (Axiom nm _ fvs _ (Statement _ (FunApp name tms) ty)) = do
-  checkArgsAreMetaVars (map fst fvs) tms
+getAxFunSym ax@(Axiom nm _ fvs prems (Statement _ (FunApp name tms) ty)) = do
+  mvs <- checkArgsAreMetaVars (map fst fvs) tms
+  -------------------------------------
   (FunSym _ _ srt) <- uses (SymbolTable.funSyms) (unJust . Map.lookup name)
   when (null ty && srt == varSort) $
     throwError $ "Axiom that introduces a funsym of sort tm must have a type: " ++ nm
+  -------------------------------------
+  -- checks that vars use correct metas only
+  checkCtxVars mvs ax
+  -------------------------------------
+  -- checks that we have all depmetas premises
+  mapM_ (checkHavePrems nm prems) mvs
   return name
   where
-    checkArgsAreMetaVars :: [MetaVar] -> [(Ctx, Term)] -> SortCheckM ()
-    checkArgsAreMetaVars fvs [] = return ()
-    checkArgsAreMetaVars fvs ((ct, Meta (MetaVar _ mvN)): xs) = do
+    checkArgsAreMetaVars :: [MetaVar] -> [(Ctx, Term)] -> SortCheckM [MetaVar]
+    checkArgsAreMetaVars fvs [] = return []
+    checkArgsAreMetaVars fvs ((ct, Meta ma@(MetaVar _ mvN)): xs) = do
       let mv = MetaVar ct mvN
       let fv = unJust $ lookup mv (zip fvs fvs)
       unless (identicalMV mv fv) $
         throwError $ show mv ++ " has different context from " ++
                      show fv ++ " in funsym intro axiom: " ++ nm
-      checkArgsAreMetaVars fvs xs
+      mvs <- checkArgsAreMetaVars fvs xs
+      return (ma:mvs)
     checkArgsAreMetaVars _ _ = throwError $ "Not all terms in " ++ name ++
                                             " are metavars in: " ++ nm
-
 getAxFunSym (Axiom _ _ _ _ Statement {}) =
   throwError "Implementation bug, should have FunApp here"
 getAxFunSym _ = throwError "Implementation bug, cannot have equality judgement in conclusion"
@@ -92,8 +100,16 @@ checkAx ax@(Axiom name stabs forall prem concl) = do
 
   return (Axiom name stab' forall' prem' concl')
 
+checkHavePrems :: String -> [Judgement] -> MetaVar -> SortCheckM ()
+checkHavePrems _ prems (MetaVar [] _) = return ()
+checkHavePrems nm prems mv =
+  unless (any (metaPrem mv) prems) $
+    throwError $ show mv ++ " doesn't have a premise Judgement! In axiom: " ++ nm
 
-
-
+  where
+    metaPrem :: MetaVar -> Judgement -> Bool
+    metaPrem mv (Statement _ tm Nothing) = tm == (Meta mv)
+    metaPrem mv (Statement _ tm (Just ty)) = tm == (Meta mv) || (Meta mv) == ty 
+    metaPrem _ _ = False
 
 ---

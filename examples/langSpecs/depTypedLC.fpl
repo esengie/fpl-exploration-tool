@@ -36,7 +36,7 @@ Axioms :
 
   TApp =
     forall t1 : tm , t2 : tm , S : ty, x.T : ty
-      |- t1 : pi(S, x.T) , |- t2 : S |---- |- app(t1 , t2, x.T) : T[x:=t2]
+      |- t1 : pi(S, x.T) , |- t2 : S , x : S |- T def |---- |- app(t1 , t2, x.T) : T[x:=t2]
 
 Reductions :
   Beta =

@@ -91,9 +91,9 @@ SortLeft        :   ident                                     { SimpleSort $1 }
 AxiomsAll       :   axBeg ':' '\t' Axioms '/t'                { $4 }
 ReductionsAll   :   redBeg ':' '\t' Reductions '/t'           { $4 }
 
-Axioms          :   Axiom                                     { [$1] }
+Axioms          :   Axiom                                     { [$1]    }
                 |   Axiom Axioms                              { $1 : $2 }
-Reductions      :   Reduction                                 { [$1] }
+Reductions      :   Reduction                                 { [$1]    }
                 |   Reduction Reductions                      { $1 : $2 }
 
 Axiom           :   Header '=' '\t' Forall '\t'
