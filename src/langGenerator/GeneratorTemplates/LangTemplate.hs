@@ -1,14 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module LangTemplate(
-  TC,
-  Ctx,
-  consCtx,
-  Term(..),
-  infer,
-  infer0,
-  nf
-) where
+module LangTemplate
+-- (
+--   TC,
+--   Ctx,
+--   consCtx,
+--   Term(..),
+--   infer,
+--   infer0,
+--   nf
+-- )
+where
 
 -- Note: search is through fun name prefix matching.
 -- So if you switch infer and infer0 guess what happens
@@ -77,7 +79,7 @@ report :: String -> TC (Type a)
 report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 
 emptyCtx :: (Show a, Eq a) => Ctx a
-emptyCtx = (const $ Left "variable not in scope")
+emptyCtx x = Left $ "Variable not in scope: " ++ show x
 
 
 consCtx :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)

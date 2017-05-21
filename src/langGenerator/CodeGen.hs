@@ -51,7 +51,7 @@ gene = codeGenIO "examples/langSpecs/convoluted.fpl" >>= putStrLn
 --------------------------------------------------------------------------------
 
 buildModule :: Module -> GenM Module
-buildModule (Module a b c _) = do
+buildModule (Module (Just (ModuleHead _ v1 v2)) b c _) = do
   ------------
   symtab <- ask
   unless (all (== (symtab^.stabs)) $ (Ax.stab <$> (Map.elems $ symtab^.SortCheck.axioms)) ++
@@ -65,10 +65,8 @@ buildModule (Module a b c _) = do
   genInfer
   genNf
   decl <- lift $ gets decls
-  return (Module a b c decl)
+  return (Module (Just (ModuleHead (ModuleName "Lang") v1 v2)) b c decl)
 buildModule x = return x
-
-
 
 
 
