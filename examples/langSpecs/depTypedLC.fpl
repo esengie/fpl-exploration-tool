@@ -11,16 +11,13 @@ FunctionalSymbols :
   pi : (ty, 0) * (ty, 1) -> ty
 Axioms :
   Tr =
-    forall
-      |--- |- true : bool
+    |--- |- true : bool
 
   Fls =
-    forall
-      |--- |- false : bool
+    |--- |- false : bool
 
   Bool =
-    forall
-      |--- |- bool def
+    |--- |- bool def
 
   If-then =
     forall t : tm, t1 : tm, t2 : tm, x.A : ty

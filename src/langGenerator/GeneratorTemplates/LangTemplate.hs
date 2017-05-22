@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module LangTemplate(
+module LangTemplate (
   TC,
   Ctx,
   consCtx,
@@ -77,7 +77,7 @@ report :: String -> TC (Type a)
 report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 
 emptyCtx :: (Show a, Eq a) => Ctx a
-emptyCtx = (const $ Left "variable not in scope")
+emptyCtx x = Left $ "Variable not in scope: " ++ show x
 
 
 consCtx :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)

@@ -1,6 +1,5 @@
 module AST(
   LangSpec(..),
-  deStabSpec,
   addStabSpec,
   module X
 ) where
@@ -14,8 +13,7 @@ import AST.Reduction as Red
 -- this means there some things that are not fully correct after parsing
 -- like some sorts are assumed independent, but in reality they are
 data LangSpec = LangSpec {
-  stable          :: Bool
-, stabilities     :: Stab
+  stabilities     :: Stab
 , depSortNames    :: [SortName]
 , simpleSortNames :: [SortName]
 , funSyms         :: [FunctionalSymbol]
@@ -24,19 +22,21 @@ data LangSpec = LangSpec {
 }
 
 deStabSpec :: LangSpec -> LangSpec
-deStabSpec (LangSpec v1 v2 v3 v4 v5 axes reds) = LangSpec v1 (deStab v2) v3 v4 v5 axes' reds'
+deStabSpec (LangSpec v2 v3 v4 v5 axes reds) = LangSpec v2 v3 v4 v5 axes' reds
   where axes' = (\ax -> ax{Ax.stab = deStab (Ax.stab ax)}) <$> axes
-        reds' = (\r ->  r{Red.stab = deStab (Red.stab r)}) <$> reds
+        -- reds' = (\r ->  r{Red.stab = deStab (Red.stab r)}) <$> reds
+
+addStabSpec' :: LangSpec -> LangSpec
+addStabSpec' (LangSpec v2 v3 v4 v5 axes reds) = LangSpec v2 v3 v4 v5 axes' reds
+  where axes' = (\ax -> ax{Ax.stab = addStab (Ax.stab ax) v2}) <$> axes
+        -- reds' = (\r ->  r{Red.stab = addStab (Red.stab r) v2}) <$> reds
 
 addStabSpec :: LangSpec -> LangSpec
-addStabSpec (LangSpec v1 v2 v3 v4 v5 axes reds) = LangSpec v1 v2 v3 v4 v5 axes' reds'
-  where axes' = (\ax -> ax{Ax.stab = addStab (Ax.stab ax) v2}) <$> axes
-        reds' = (\r ->  r{Red.stab = addStab (Red.stab r) v2}) <$> reds
-
+addStabSpec = addStabSpec' . deStabSpec
 
 instance Show LangSpec where
-  show (LangSpec st lst dep simp fun ax red) = concat [
-    if st then "Stable\n" else "Unstable\n",
+  show (LangSpec lst dep simp fun ax red) = concat [
+    "Glob stabs:\n", show lst,
     "Dep:\n  ", showCtx id dep, "\n",
     "Sim:\n  ", showCtx id simp, "\n",
     "Fun:", showCtx (helper "\n  ") fun, "\n",
