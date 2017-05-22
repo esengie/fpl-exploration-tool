@@ -38,5 +38,6 @@ There are 2 modules: SortCheck and CodeGen, and two functions codeGenIO and sort
 - only parts of reductions used are these a => b (context, types or premises are not taken into account yet)
 - in reductions a => b all(!) metavars of b must be present in a
 
+- c-stability - reductions are always stable. Others are concatenated with the types on top
 
 ---
