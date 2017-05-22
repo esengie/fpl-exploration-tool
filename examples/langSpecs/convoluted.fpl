@@ -14,16 +14,13 @@ FunctionalSymbols :
 
 Axioms :
   Tr =
-    forall -- noforall
-      |--- |- true : bool
+    |--- |- true : bool
 
   Fls =
-    forall
-      |--- |- false : bool
+    |--- |- false : bool
 
   Bool =
-    forall
-      |--- |- bool def
+    |--- |- bool def
 
   If-then =
     forall t : tm, t1 : tm, t2 : tm, x.A : ty

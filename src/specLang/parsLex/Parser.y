@@ -53,7 +53,7 @@ LangSpec        :   Sorts FunSyms AxRed
                         { addStabSpec (LangSpec $1 (fst $2) (snd $2) $3 (fst $4) (snd $4))   }
 
 GlobalSts       :  '[' CommaSepTerms ']'                      { Just $2  }
-                |  '[' ']'                                    { Nothing  }
+                |  '[' ']'                                    { Just []  }
 
 Sorts           :   DepSorts SimpleSorts                      { ($1, $2) }
                 |   SimpleSorts DepSorts                      { ($2, $1) }
@@ -92,16 +92,18 @@ Reductions      :   Reduction                                 { [$1]    }
 
 Axiom           :   Header '=' '\t' Forall '\t'
                       Premise '|---' JudgementNoEq '/t' '/t'  { Axiom (snd $1) (fst $1) $4 $6 $8 }
-                |   Header '=' '\t' Forall '\t'
-                      '|---' JudgementNoEq '/t' '/t'          { Axiom (snd $1) (fst $1) $4 [] $7 }
+                |   Header '=' '\t'
+                      Premise '|---' JudgementNoEq '/t'       { Axiom (snd $1) (fst $1) [] $4 $6 }
 
 Reduction       :   Header '=' '\t' Forall '\t'
                       Premise '|---' JudgeReduct '/t' '/t'    { Reduction (snd $1) (fst $1) $4 $6 $8 }
-                |   Header '=' '\t' Forall '\t'
-                      '|---' JudgeReduct '/t' '/t'            { Reduction (snd $1) (fst $1) $4 [] $7 }
+                |   Header '=' '\t'
+                      Premise '|---' JudgeReduct '/t'         { Reduction (snd $1) (fst $1) [] $4 $6 }
+
 
 Header          :   ident                                     { (Nothing, $1) }
                 |   '[' CommaSepTerms ']' ident               { (Just $2, $4) }
+                |   '[' ']' ident                             { (Just [], $3) }
 
 Forall          :   V ForallVars                              { $2 }
                 |   V                                         { [] } -- will fix later if at all
@@ -113,11 +115,12 @@ VarName         :   ident                                     { MetaVar [] $1 }
                 |   ident '.' ident                           { MetaVar [$1] $3 }
                 |   '(' SpaceSepNames ')' '.' ident           { MetaVar $2 $5 }
 
-SpaceSepNames   :   ident                                     { [$1] }
+SpaceSepNames   :   ident                                     { [$1]    }
                 |   ident SpaceSepNames                       { $1 : $2 }
 
-Premise         :   JudgementWithEq                           { [$1] }
+Premise         :   JudgementWithEq                           { [$1]    }
                 |   JudgementWithEq ',' Premise               { $1 : $3 }
+                |                                             { []      }
 
 JudgementNoEq   :   '|-' Term ':' Term                        { Statement [] $2 (Just $4) }
                 |   '|-' Term def                             { Statement [] $2 Nothing }
