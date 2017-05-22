@@ -1,8 +1,6 @@
-module CodeGen.Infer
--- (
---   genInfer
--- )
-where
+module CodeGen.Infer (
+  genInfer
+) where
 
 import Control.Monad.Reader
 import Control.Monad.State

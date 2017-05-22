@@ -54,14 +54,13 @@ buildModule :: Module -> GenM Module
 buildModule (Module (Just (ModuleHead _ v1 v2)) b c _) = do
   ------------
   symtab <- ask
-  unless (all (== (symtab^.stabs)) $ (Ax.stab <$> (Map.elems $ symtab^.SortCheck.axioms)) ++
-                                     (Red.stab <$> (Map.elems $ symtab^.SortCheck.reductions))) $
-    throwError "As of now either all axioms and reductions are c-stable or all are stable"
+  unless (all Prelude.null $ Red.stab <$> (Map.elems $ symtab^.SortCheck.reductions)) $
+    throwError "As of now all reductions are stable"
   -----------------------------------------------------------
   genTerms
   genSortTypes
   genMonad
-  genConsCtx
+  -- genConsCtx
   genInfer
   genNf
   decl <- lift $ gets decls

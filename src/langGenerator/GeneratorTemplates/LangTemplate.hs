@@ -69,10 +69,10 @@ checkEq want have = do
   when (nf have /= nf want) $ Left $
     "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
 
--- checkId :: (Show a, Eq a) => Term a -> Term a -> TC ()
--- checkId want have = do
---   when (have /= want) $ Left $
---     "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
+checkId :: (Show a, Eq a) => Term a -> Term a -> TC ()
+checkId want have = do
+  when (have /= want) $ Left $
+    "Terms are unequal, left: " ++ (show have) ++ " right: " ++ (show want)
 
 
 report :: String -> TC (Type a)

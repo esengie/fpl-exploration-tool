@@ -3,9 +3,9 @@
 import Data.Foldable
 
 import SimpleBound
-import Grammar
-
+import PStruct
 import Lang
+import Grammar
 
 
 
@@ -15,11 +15,10 @@ convert (Fun "Pi" [([], a), ([v], b)]) = Pi (convert a) (abstract v $ convert b)
 convert (Fun "Lam" [([], a), ([v], b)]) = Lam (convert a) (abstract v $ convert b)
 convert (Fun "App" [([], a), ([], b), ([v], c)]) = App (convert a) (convert b) (abstract v $ convert c)
 convert (Fun "Bool" []) = Bool
-convert (AppP nm []) =
 convert _ = error "Parse error"
 
 
-spec x = convert . term $ runParse x !! 0
+-- spec x = convert . term $ runParse x !! 0
 
 
 

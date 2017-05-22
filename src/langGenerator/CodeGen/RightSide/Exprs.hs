@@ -178,12 +178,11 @@ buildTermPat ctx (FunApp nm lst) = do
   return $ pApp (name $ caps nm) pats'
 
 genCheckStability :: Stab -> BldRM ()
-genCheckStability sty = return ()
-  -- do
-  -- styEx <- stability sty
-  -- case styEx of
-  --   Nothing -> return ()
-  --   Just (ex) -> appendExp ex
+genCheckStability sty = do
+  styEx <- buildStabilityExp sty
+  case styEx of
+    Nothing -> return ()
+    Just (ex) -> appendExp $ appFun stabE [ctxE, var tmAlias, ex]
 
 buildStabilityExp :: Stab -> BldRM (Maybe Exp)
 buildStabilityExp Nothing = return Nothing

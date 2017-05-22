@@ -104,7 +104,8 @@ infer ctx TyK     = throwError "Can't have star : star"
 infer ctx True    = pure Bool
 infer ctx False   = pure Bool
 infer ctx Bool    = pure TyK
-infer ctx (If a t x y) = do
+infer ctx res@(If a t x y) = do
+    stable [] res -- traverse
     check ctx Bool t
     check (consCtx Bool ctx) TyK (fromScope a)
     check ctx (instantiate True a) x

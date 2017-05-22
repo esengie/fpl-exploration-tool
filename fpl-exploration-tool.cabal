@@ -28,7 +28,6 @@ library
                      , transformers == 0.5.*
                      , transformers-compat >= 0.5
                      , lens >= 4.14
-                     , bound >= 1.0.7
                      , prelude-extras >= 0.4.0.3
                      , deriving-compat >= 0.3.5
                      , haskell-src-exts-simple >= 1.19.0.0
@@ -50,7 +49,6 @@ executable fpl-exploration-tool-exe
                      , transformers == 0.5.*
                      , transformers-compat >= 0.5
                      , lens >= 4.14
-                     , bound >= 1.0.7
                      , prelude-extras >= 0.4.0.3
                      , deriving-compat >= 0.3.5
                      , haskell-src-exts-simple >= 1.19.0.0

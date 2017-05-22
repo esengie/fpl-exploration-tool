@@ -38,7 +38,7 @@ buildRightNf (AST.FunSym nm args _) xs = do
 
 buildNf' :: Int -> Reduction -> BldRM Match
 buildNf' cnt red = do
-  genCheckStability $ stab red
+  -- genCheckStability $ stab red
   -- populate foralls
   populateForalls (forallVars red)
   -- gen left side & write all metas given as args -- don't mess with contexts

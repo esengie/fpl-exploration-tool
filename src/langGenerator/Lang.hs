@@ -84,6 +84,13 @@ checkEq want have
            "Terms are unequal, left: " ++
              (show have) ++ " right: " ++ (show want)
 
+checkId :: (Show a, Eq a) => Term a -> Term a -> TC ()
+checkId want have
+  = do when (have /= want) $
+         Left $
+           "Terms are unequal, left: " ++
+             (show have) ++ " right: " ++ (show want)
+
 report :: String -> TC (Type a)
 report nm = throwError $ "Can't have " ++ nm ++ " : " ++ nm
 
@@ -91,8 +98,7 @@ emptyCtx :: (Show a, Eq a) => Ctx a
 emptyCtx x = Left $ "Variable not in scope: " ++ show x
 
 consCtx :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)
-consCtx x ct var
-  = if elem x [Bool] then consCtx' x ct var else consErr x [Bool]
+consCtx x = consCtx' x
 
 consCtx' :: (Show a, Eq a) => Type a -> Ctx a -> Ctx (Var a)
 consCtx' ty ctx B = pure (F <$> ty)
@@ -107,7 +113,8 @@ infer ctx (Var v1) = ctx v1
 infer ctx TnDef = report "TnDef"
 infer ctx TyDef = report "TyDef"
 infer ctx al@(App v1 v2 v3)
-  = do v4 <- infer ctx v2
+  = do stable ctx al [Bool]
+       v4 <- infer ctx v2
        v5 <- pure (nf v4)
        v6 <- infer ctx v1
        checkEq (Pi v5 (toScope (fromScope v3))) v6
@@ -116,10 +123,15 @@ infer ctx al@(App v1 v2 v3)
        infer ctx v1
        infer ctx v2
        pure (instantiate v2 (toScope (fromScope v3)))
-infer ctx al@Bool = pure TyDef
-infer ctx al@False = pure Bool
+infer ctx al@Bool
+  = do stable ctx al [Bool]
+       pure TyDef
+infer ctx al@False
+  = do stable ctx al [Bool]
+       pure Bool
 infer ctx al@(If v1 v2 v3 v4)
-  = do v5 <- infer ctx v2
+  = do stable ctx al [Bool]
+       v5 <- infer ctx v2
        checkEq Bool v5
        v6 <- infer ctx v4
        checkEq (instantiate False (toScope (fromScope v1))) v6
@@ -132,16 +144,19 @@ infer ctx al@(If v1 v2 v3 v4)
        infer ctx v4
        pure (instantiate v2 (toScope (fromScope v1)))
 infer ctx al@(Lam v1 v2)
-  = do checkT ctx TyDef v1
+  = do stable ctx al [Bool]
+       checkT ctx TyDef v1
        v3 <- infer (consCtx v1 ctx) (fromScope v2)
        v4 <- pure (nf v3)
        pure (Pi v1 (toScope v4))
 infer ctx al@(Pi v1 v2)
-  = do checkT ctx TyDef v1
+  = do stable ctx al [Bool]
+       checkT ctx TyDef v1
        checkT (consCtx v1 ctx) TyDef (fromScope v2)
        pure TyDef
 infer ctx al@(Sigma v1 v2 v3 v4)
-  = do checkT ctx TyDef Bool
+  = do stable ctx al [Bool]
+       checkT ctx TyDef Bool
        v5 <- infer (consCtx Bool ctx) (rt add1 v2)
        v6 <- pure (nf v5)
        checkEq v6 (fromScope v3)
@@ -166,7 +181,9 @@ infer ctx al@(Sigma v1 v2 v3 v4)
          (instantiate v2
             (toScope
                (instantiate (rt add1 v2) (toScope (rt swap1'2 (fromScope2 v4))))))
-infer ctx al@True = pure Bool
+infer ctx al@True
+  = do stable ctx al [Bool]
+       pure Bool
 
 infer0 :: (Show a, Eq a) => Term a -> TC (Type a)
 infer0 = infer emptyCtx
