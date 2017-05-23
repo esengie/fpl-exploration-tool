@@ -29,7 +29,7 @@ There are 2 modules: SortCheck and CodeGen, and two functions codeGenIO and sort
 - only funsyms are allowed in axiom conclusions (no equations)
 - only metavars are allowed in funsyms in conclusions
 - if an axiom conclusion is a term it must have a type (can't just say |--- |- false def, must say |--- |- false : bool)
-- no substitutions are allowed for the left hand of a judgement
+- no substitutions are allowed for the left hand of a reduction
 - may subst only into metavars
 
 - if variables of metavariables (X) have type of metavars, they may use only metavars that come before X in funsym in conclusion (Eg: |--- |- f(A, x.B, z.Y, r.T) -- here z may use only A and B as its' type, x may use only A, while r may use A, B, and Y)
