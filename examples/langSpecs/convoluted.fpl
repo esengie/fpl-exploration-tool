@@ -11,10 +11,18 @@ FunctionalSymbols :
   app : (tm , 0) * (tm , 0) * (ty, 1) -> tm
   pi : (ty, 0) * (ty, 1) -> ty
   sigma : (tm,0) * (tm, 0) * (ty, 1) * (ty, 2) -> tm
+  ff : (ty, 0) * (tm, 0) -> ty
 
 Axioms :
   Tr =
     |--- |- true : bool
+
+  FRule =
+    forall S : ty, t : tm, T : ty
+      x:S, y:S |- t : T,
+      x:T |- t : bool 
+      |-----------------
+      |- ff(S, t) def
 
   Fls =
     |--- |- false : bool

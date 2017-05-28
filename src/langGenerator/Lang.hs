@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Lang where
+module Lang (TC, Ctx, consCtx, Term(..), infer, infer0, nf) where
 import Prelude hiding (pi, False, True)
 import Data.Deriving (deriveEq1, deriveShow1)
 import Data.Functor.Classes
@@ -23,6 +23,7 @@ data Term a = Var a
             | App (Term a) (Term a) (Scope Type a)
             | Bool
             | False
+            | Ff (Type a) (Term a)
             | If (Scope Type a) (Term a) (Term a) (Term a)
             | Lam (Type a) (Scope Term a)
             | Pi (Type a) (Scope Type a)
@@ -60,6 +61,7 @@ instance Monad Term where
         App v1 v2 v3 >>= f = App (v1 >>= f) (v2 >>= f) (v3 >>>= f)
         Bool >>= f = Bool
         False >>= f = False
+        Ff v1 v2 >>= f = Ff (v1 >>= f) (v2 >>= f)
         If v1 v2 v3 v4 >>= f
           = If (v1 >>>= f) (v2 >>= f) (v3 >>= f) (v4 >>= f)
         Lam v1 v2 >>= f = Lam (v1 >>= f) (v2 >>>= f)
@@ -80,13 +82,6 @@ checkT ctx want t
 checkEq :: (Show a, Eq a) => Term a -> Term a -> TC ()
 checkEq want have
   = do when (nf have /= nf want) $
-         Left $
-           "Terms are unequal, left: " ++
-             (show have) ++ " right: " ++ (show want)
-
-checkId :: (Show a, Eq a) => Term a -> Term a -> TC ()
-checkId want have
-  = do when (have /= want) $
          Left $
            "Terms are unequal, left: " ++
              (show have) ++ " right: " ++ (show want)
@@ -129,6 +124,18 @@ infer ctx al@Bool
 infer ctx al@False
   = do stable ctx al [Bool]
        pure Bool
+infer ctx al@(Ff v1 v2)
+  = do stable ctx al [Bool]
+       checkT ctx TyDef v1
+       checkT (consCtx v1 ctx) TyDef (rt add1 v1)
+       v3 <- infer (consCtx (rt add1 v1) (consCtx v1 ctx))
+               (rt add1 (rt add1 v2))
+       v4 <- pure (nf v3) >>= traverse rem1 >>= traverse rem1
+       checkT ctx TyDef v4
+       v5 <- infer (consCtx v4 ctx) (rt add1 v2)
+       checkEq Bool v5
+       infer ctx v2
+       pure TyDef
 infer ctx al@(If v1 v2 v3 v4)
   = do stable ctx al [Bool]
        v5 <- infer ctx v2
@@ -195,6 +202,7 @@ nf TyDef = TyDef
 nf (App v1 v2 v3) = nf' (U Bot) (App (nf v1) (nf v2) (nf1 v3))
 nf Bool = Bool
 nf False = False
+nf (Ff v1 v2) = Ff (nf v1) (nf v2)
 nf (If v1 v2 v3 v4)
   = nf' (U (U Bot)) (If (nf1 v1) (nf v2) (nf v3) (nf v4))
 nf (Lam v1 v2) = Lam (nf v1) (nf1 v2)
