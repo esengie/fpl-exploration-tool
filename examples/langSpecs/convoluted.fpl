@@ -12,15 +12,26 @@ FunctionalSymbols :
   pi : (ty, 0) * (ty, 1) -> ty
   sigma : (tm,0) * (tm, 0) * (ty, 1) * (ty, 2) -> tm
   ff : (ty, 0) * (tm, 0) -> ty
+  gf : (ty, 0) * (ty, 2) -> tm
+  rf : (ty, 0) * (ty, 2) -> ty
 
 Axioms :
   Tr =
     |--- |- true : bool
 
+  GRule =
+    forall S : ty, (x y).T : ty
+      x : S, y : S |- T def |--- |- gf(S, (x y).T) : rf(S, (x y).T)
+
+  RRule =
+    forall S : ty, (x y).T : ty
+      x : S, y : S |- T def |--- |- rf(S, (x y).T) def
+
   FRule =
     forall S : ty, t : tm, T : ty
       x:S, y:S |- t : T,
-      x:T |- t : bool 
+      x:T |- t : bool,
+      |- gf(S, (x z).rf(T, (y r).T)) : rf(S, (x z).T)
       |-----------------
       |- ff(S, t) def
 
@@ -60,8 +71,8 @@ Reductions :
        |--- |- app(lam(A , x.app(a, b, z.T)) , a, z.T) => b[x := a] -- : T[z:=a]
 
   IfRed1 =
-    forall x.A : ty, f : tm , g : tm
-      |--- |- if(x.A, true, f, g) => f  -- : A[x:=true]
+    forall x.A : ty, f : tm , r : tm
+      |--- |- if(x.A, true, f, r) => f  -- : A[x:=true]
 
   IfRed2 =
     forall x.A : ty, f : tm , g : tm

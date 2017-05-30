@@ -24,9 +24,11 @@ data Term a = Var a
             | Bool
             | False
             | Ff (Type a) (Term a)
+            | Gf (Type a) (Scope (Scope Type) a)
             | If (Scope Type a) (Term a) (Term a) (Term a)
             | Lam (Type a) (Scope Term a)
             | Pi (Type a) (Scope Type a)
+            | Rf (Type a) (Scope (Scope Type) a)
             | Sigma (Term a) (Term a) (Scope Type a) (Scope (Scope Type) a)
             | True
 
@@ -62,10 +64,12 @@ instance Monad Term where
         Bool >>= f = Bool
         False >>= f = False
         Ff v1 v2 >>= f = Ff (v1 >>= f) (v2 >>= f)
+        Gf v1 v2 >>= f = Gf (v1 >>= f) (ap2 v2 f)
         If v1 v2 v3 v4 >>= f
           = If (v1 >>>= f) (v2 >>= f) (v3 >>= f) (v4 >>= f)
         Lam v1 v2 >>= f = Lam (v1 >>= f) (v2 >>>= f)
         Pi v1 v2 >>= f = Pi (v1 >>= f) (v2 >>>= f)
+        Rf v1 v2 >>= f = Rf (v1 >>= f) (ap2 v2 f)
         Sigma v1 v2 v3 v4 >>= f
           = Sigma (v1 >>= f) (v2 >>= f) (v3 >>>= f) (ap2 v4 f)
         True >>= f = True
@@ -131,11 +135,24 @@ infer ctx al@(Ff v1 v2)
        v3 <- infer (consCtx (rt add1 v1) (consCtx v1 ctx))
                (rt add1 (rt add1 v2))
        v4 <- pure (nf v3) >>= traverse rem1 >>= traverse rem1
+       v5 <- infer ctx
+               (Gf v1
+                  (toScope2
+                     (Rf (rt add1 (rt add1 v4))
+                        (toScope2 (rt add1 (rt add1 (rt add1 (rt add1 v4))))))))
+       checkEq (Rf v1 (toScope2 (rt add1 (rt add1 v4)))) v5
        checkT ctx TyDef v4
-       v5 <- infer (consCtx v4 ctx) (rt add1 v2)
-       checkEq Bool v5
+       v6 <- infer (consCtx v4 ctx) (rt add1 v2)
+       checkEq Bool v6
        infer ctx v2
        pure TyDef
+infer ctx al@(Gf v1 v2)
+  = do stable ctx al [Bool]
+       checkT ctx TyDef v1
+       checkT (consCtx v1 ctx) TyDef (rt add1 v1)
+       checkT (consCtx (rt add1 v1) (consCtx v1 ctx)) TyDef
+         (fromScope2 v2)
+       pure (Rf v1 (toScope2 (fromScope2 v2)))
 infer ctx al@(If v1 v2 v3 v4)
   = do stable ctx al [Bool]
        v5 <- infer ctx v2
@@ -160,6 +177,13 @@ infer ctx al@(Pi v1 v2)
   = do stable ctx al [Bool]
        checkT ctx TyDef v1
        checkT (consCtx v1 ctx) TyDef (fromScope v2)
+       pure TyDef
+infer ctx al@(Rf v1 v2)
+  = do stable ctx al [Bool]
+       checkT ctx TyDef v1
+       checkT (consCtx v1 ctx) TyDef (rt add1 v1)
+       checkT (consCtx (rt add1 v1) (consCtx v1 ctx)) TyDef
+         (fromScope2 v2)
        pure TyDef
 infer ctx al@(Sigma v1 v2 v3 v4)
   = do stable ctx al [Bool]
@@ -203,10 +227,12 @@ nf (App v1 v2 v3) = nf' (U Bot) (App (nf v1) (nf v2) (nf1 v3))
 nf Bool = Bool
 nf False = False
 nf (Ff v1 v2) = Ff (nf v1) (nf v2)
+nf (Gf v1 v2) = Gf (nf v1) (nf2 v2)
 nf (If v1 v2 v3 v4)
   = nf' (U (U Bot)) (If (nf1 v1) (nf v2) (nf v3) (nf v4))
 nf (Lam v1 v2) = Lam (nf v1) (nf1 v2)
 nf (Pi v1 v2) = Pi (nf v1) (nf1 v2)
+nf (Rf v1 v2) = Rf (nf v1) (nf2 v2)
 nf (Sigma v1 v2 v3 v4) = Sigma (nf v1) (nf v2) (nf1 v3) (nf2 v4)
 nf True = True
 
